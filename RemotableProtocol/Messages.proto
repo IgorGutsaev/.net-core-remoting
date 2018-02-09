@@ -1,0 +1,31 @@
+﻿syntax = "proto3";
+import "timestamp.proto";
+
+package RemoteCommunication.RemotableProtocol;
+
+option csharp_namespace = "RemoteCommunication.RemotableProtocol";
+
+   enum RemotingCommands {
+        Unknown = 0;
+        ConnectionRequest = 1;
+        ConnectionResponse = 2;
+        HandshakeRequest = 3;
+        HandshakeResponse = 4;
+        QueryInterface = 5;
+        ReleaseInterface = 6;
+        InvokeMethod = 7;
+        TriggerEvent = 8;
+    }
+
+	/*
+message ProtoType {
+	RemotingCommands Type = 1;
+}*/
+
+
+message ConnectRequestMsg {
+ RemotingCommands type = 1;// [default = ConnectionRequest"];
+ string address = 2;
+ int32 port = 3;
+ google.protobuf.Timestamp Timestamp = 4;
+}
