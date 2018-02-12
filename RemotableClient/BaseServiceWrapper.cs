@@ -1,6 +1,7 @@
 ﻿using RemotableInterface;
 using RemoteCommunication.RemotableProtocol;
 using System;
+using System.Diagnostics;
 
 namespace RemotableClient
 {
@@ -10,13 +11,16 @@ namespace RemotableClient
 
         public BaseServiceWrapper(IClientProxy proxy)
         {
+            Debug.WriteLine($"Start service at {DateTime.Now.Date.ToString("f")}");
+
             this._proxy = proxy;
             this.Connect();
         }
 
         private string Connect()
         {
-            ConnectRequestMsg message = new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest, Address = "localhost", Port = 65432, Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.Now.ToUniversalTime()) };
+            Debug.WriteLine($"Send connection request to {_proxy.GetServerEndpoint()}");
+            ConnectRequestMsg message = new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest, Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.Now.ToUniversalTime()) };
             return this._proxy.Invoke(message).ToString();
         }
     }

@@ -4,8 +4,8 @@ using System.Text;
 
 namespace RemotableInterfaces
 {
-    public interface IMyService
+    public interface IBroker
     {
-        void Do();
+        string CreateService(string serviceName);
     }
 }

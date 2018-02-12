@@ -13,15 +13,9 @@ namespace RemotableServer
     {
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddScoped<INetListenerHandler>(sp => new NetListenerHandler())
+            return serviceCollection.AddScoped<INetListenerHandle>(sp => new NetListenerHandler())
                 .AddScoped<INetSenderHandler>(sp => new NetSenderHandler())
-                .AddScoped<IClientProxy, ClientProxy>()
-                .AddSingleton<INetServerSettings, NetServerSettings>()
-                .AddScoped<INetChannel, NetChannel>()
-                .AddSingleton<NetChannelActivator>(sp => {
-                    INetServerSettings settings = sp.GetRequiredService<INetServerSettings>();
-                    return new NetChannelActivator(settings, sp.GetRequiredService<INetListenerHandler>().Handle);
-                });
+                .AddScoped<IClientProxy, ClientProxy>();
         }
     }
 }

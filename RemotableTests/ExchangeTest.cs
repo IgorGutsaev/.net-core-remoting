@@ -1,14 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using RemotableClient;
-using RemotableInterface;
 using RemotableInterfaces;
 using RemotableInterfactes;
 using RemotableServer;
-using RemoteCommunication.RemotableProtocol;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
 using Xunit;
 
 namespace RemotableTests
@@ -18,24 +13,26 @@ namespace RemotableTests
         [Fact]
         public void Test_Communication()
         {
-            INetChannelActivator activator = new ServiceCollection()
+            INetChannelListener activator = new ServiceCollection()
                 .AddRemoting()
-                .AddSingleton<INetChannelActivator>(sp=> {
-                    return new NetChannelActivator(sp.GetRequiredService<INetServerSettings>(), sp.GetRequiredService<INetListenerHandler>().Handle);
+                .AddSingleton<INetServerEndpointSettings, NetServerEndpointSettings>()
+                .AddSingleton<INetChannelListener>(sp => {
+                    return new NetChannelListener(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandle>().Handle);
                 })
                 .BuildServiceProvider()
-                .GetRequiredService<INetChannelActivator>();
+                .GetRequiredService<INetChannelListener>();
 
             activator.Start();
 
-
             IMyService service = new ServiceCollection()
             .AddRemoting()
+            .AddSingleton<INetServerEndpointSettings>(sp => { return new NetServerEndpointSettings(); })
+            .AddScoped<INetChannel>(sp => { return new NetChannel(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandle>().Handle2); })
             .AddScoped<IMyService, MyServiceWrapper>()
             .BuildServiceProvider()
             .GetRequiredService<IMyService>();
-
-         //   service.Do();
+            
+             //  service.Do();
 
             System.Threading.Thread.Sleep(100000);
 

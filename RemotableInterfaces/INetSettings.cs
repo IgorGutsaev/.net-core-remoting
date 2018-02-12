@@ -5,13 +5,7 @@ using System.Text;
 
 namespace RemotableInterfactes
 {
-    public interface INetServerSettings
-    {
-        IPAddress ServerIpAddress { get; set; }
-        Int32 ServerPortNumber { get; set; }
-    }
-
-    public interface INetClientSettings
+    public interface INetServerEndpointSettings
     {
         IPAddress ServerIpAddress { get; set; }
         Int32 ServerPortNumber { get; set; }

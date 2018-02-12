@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="ClientProxy.cs" />
     <Compile Remove="NetClient.cs" />
   </ItemGroup>
 

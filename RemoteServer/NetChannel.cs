@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -14,33 +15,20 @@ namespace RemotableServer
         public EventHandler<string> ConnectionClosed;
 
         public string Uid = Guid.NewGuid().ToString();
-        private TcpClient _Client;
 
         private bool keepAlive = true;
         private BlockingCollection<NetPackage> _PackageQueue = new BlockingCollection<NetPackage>(); // message queue 
 
-        public INetServerSettings _settings;
-        private Action<Stream> _incomeDataHandler;
+        public INetServerEndpointSettings _settings;
+        private Action<byte[]> _incomeDataHandler;
 
         /// <summary>
         /// For client
         /// </summary>
         /// <param name="settings"></param>
-        public NetChannel(INetServerSettings settings)
+        public NetChannel(INetServerEndpointSettings settings, Action<byte[]> incomeDataHandler)
         {
             this._settings = settings;
-            this._Client = new TcpClient(_settings.ServerIpAddress.ToString(), _settings.ServerPortNumber);
-            var ok = this._Client.Connected;
-        }
-
-        /// <summary>
-        /// For server
-        /// </summary>
-        /// <param name="client"></param>
-        /// <param name="incomeDataHandler"></param>
-        public NetChannel(TcpClient client, Action<Stream> incomeDataHandler)
-        {
-            this._Client = client;
             this._incomeDataHandler = incomeDataHandler;
         }
 
@@ -70,7 +58,6 @@ namespace RemotableServer
         {
             this.ConnectionClosed?.Invoke(this, null);
             keepAlive = false;
-            this._Client.Close();
         }
 
         private void LoopSend()
@@ -79,31 +66,32 @@ namespace RemotableServer
             {
                 while (keepAlive)
                 {
-                    if (!this._Client.Connected)
-                    {
-                        keepAlive = false;
-                        this.ConnectionClosed?.Invoke(this, this.Uid);
-                        continue;
-                    }
+                    NetPackage package = _PackageQueue.Take();
+                    if (package == null)
+                        break;
 
-                    using (NetworkStream stream = this._Client.GetStream())
+                    using (TcpClient lClient = new TcpClient())
                     {
-                        try
+                        lClient.Connect(this._settings.ServerIpAddress, this._settings.ServerPortNumber);
+                        using (NetworkStream stream = lClient.GetStream())
                         {
-                            _incomeDataHandler(stream);
-                            ////stream.Write(result, 0, result.Length);
-                            NetPackage package = _PackageQueue.Take();
-                            if (package == null)
-                                break;
+                            try
+                            {
+                                stream.Write(package.Data, 0, package.Data.Length);
+                                stream.ReadTimeout = 100;
 
-                            stream.Write(package.Data, 0, package.Data.Length);
+                                byte[] data = new byte[512];
+                                stream.Read(data, 0, data.Length);
+
+                                this._incomeDataHandler?.Invoke(data);
+                            }
+                            catch (System.IO.IOException)
+                            {
+                                if (!keepAlive) Trace.WriteLine("user requested TcpClient shutdown.");
+                                else Trace.WriteLine("disconnected");
+                            }
+                            catch (Exception ex) { Trace.WriteLine(ex.Message); }
                         }
-                        catch (System.IO.IOException)
-                        {
-                            if (!keepAlive) Trace.WriteLine("user requested TcpClient shutdown.");
-                            else Trace.WriteLine("disconnected");
-                        }
-                        catch (Exception ex) { Trace.WriteLine(ex.Message); }
                     }
                 }
             }

@@ -1,11 +1,11 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace RemotableInterfaces
 {
-    public interface IMyService
+    public interface IServerProxy
     {
-        void Do();
     }
 }

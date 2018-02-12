@@ -13,6 +13,7 @@ namespace RemotableInterface
     /// </summary>
     public interface IClientProxy
     {
+        IPEndPoint GetServerEndpoint();
         object Invoke(object data); 
     }
 }

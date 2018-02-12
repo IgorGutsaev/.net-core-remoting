@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Google.Protobuf;
 using RemotableInterfaces;
+using RemotableObjects;
 using RemoteCommunication.RemotableProtocol;
 
 namespace RemotableServer
@@ -14,10 +15,18 @@ namespace RemotableServer
             if (data is ConnectRequestMsg)
             {
                 ConnectRequestMsg message = (ConnectRequestMsg)data;
-                return NetPackage.Create(serviceUid, message.ToByteArray());
+
+                byte[] typeBuff = BitConverter.GetBytes((int)message.Type);
+                byte[] bodyBuff = message.ToByteArray();
+
+                byte[] totalLengthBuff = BitConverter.GetBytes(typeBuff.Length + bodyBuff.Length);
+
+                return NetPackage.Create(serviceUid, totalLengthBuff.Combine(typeBuff).Combine(bodyBuff));
             }
 
             return null;
         }
+
+
     }
 }
