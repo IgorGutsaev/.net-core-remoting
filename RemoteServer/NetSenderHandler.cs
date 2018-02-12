@@ -12,7 +12,7 @@ namespace RemotableServer
     {
         public NetPackage Pack(string serviceUid, object data)
         {
-            if (data is ConnectRequestMsg)
+            if (data is IMessage)
             {
                 ConnectRequestMsg message = (ConnectRequestMsg)data;
 

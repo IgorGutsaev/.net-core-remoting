@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RemotableInterfaces\RemotableInterfaces.csproj" />
+    <ProjectReference Include="..\RemotableProtocol\RemotableProtocol.csproj" />
   </ItemGroup>
 
 </Project>

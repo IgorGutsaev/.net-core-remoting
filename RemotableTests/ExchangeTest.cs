@@ -2,6 +2,7 @@
 using RemotableClient;
 using RemotableInterfaces;
 using RemotableInterfactes;
+using RemotableObjects;
 using RemotableServer;
 using System;
 using Xunit;
@@ -13,21 +14,20 @@ namespace RemotableTests
         [Fact]
         public void Test_Communication()
         {
-            INetChannelListener activator = new ServiceCollection()
+            IBroker broker = new ServiceCollection()
                 .AddRemoting()
                 .AddSingleton<INetServerEndpointSettings, NetServerEndpointSettings>()
                 .AddSingleton<INetChannelListener>(sp => {
-                    return new NetChannelListener(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandle>().Handle);
+                    return new NetChannelListener(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandler>().Handle);
                 })
+                .AddSingleton<IBroker, Broker>()
                 .BuildServiceProvider()
-                .GetRequiredService<INetChannelListener>();
-
-            activator.Start();
+                .GetRequiredService<IBroker>();
 
             IMyService service = new ServiceCollection()
             .AddRemoting()
             .AddSingleton<INetServerEndpointSettings>(sp => { return new NetServerEndpointSettings(); })
-            .AddScoped<INetChannel>(sp => { return new NetChannel(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandle>().Handle2); })
+            .AddScoped<INetChannel>(sp => { return new NetChannel(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandler>().Handle2); })
             .AddScoped<IMyService, MyServiceWrapper>()
             .BuildServiceProvider()
             .GetRequiredService<IMyService>();

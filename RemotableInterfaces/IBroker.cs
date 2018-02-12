@@ -6,6 +6,6 @@ namespace RemotableInterfaces
 {
     public interface IBroker
     {
-        string CreateService(string serviceName);
+        string CreateProxy(string serviceName);
     }
 }

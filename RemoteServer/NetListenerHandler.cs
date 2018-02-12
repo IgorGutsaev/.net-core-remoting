@@ -27,33 +27,7 @@ namespace RemotableServer
 
                 var buffer = new byte[totalLength];
                 stream.Read(buffer, 0, buffer.Length);
-
-                using (MemoryStream ms = new MemoryStream(buffer))
-                {
-                    byte[] messageTypeHeader = new byte[4]; // to indentify the object
-                    ms.Read(messageTypeHeader, 0, 4);
-
-                    int objectType = BitConverter.ToInt16(messageTypeHeader, 0);
-
-                    RemotingCommands messageType = (RemotingCommands)objectType;
-                    Debug.WriteLine($"Received a message {messageType}");
-
-                    switch (messageType)
-                    {
-                        case RemotingCommands.Unknown:
-                            break;
-                        case RemotingCommands.ConnectionRequest:
-                            ConnectRequestMsg lMessage = ConnectRequestMsg.Parser.ParseFrom(ms);
-                            // raise an event
-                            
-                            MessageRaised?.Invoke(null, new ExchangeMessage(lMessage, clientendPoint));
-                            break;
-
-                        default:
-                            Console.WriteLine("Fatal error.");
-                            break;
-                    }
-                }
+                ProcessMessage(clientendPoint, buffer);
             }
             catch (Exception ex)
             {
@@ -63,7 +37,54 @@ namespace RemotableServer
 
         public void Handle2(byte[] data)
         {
-            throw new NotImplementedException();
+            try
+            {
+                int totalLength = BitConverter.ToInt32(data, 0);
+
+                var buffer = new byte[totalLength];
+
+                Array.Copy(data, 4, buffer, 0, totalLength);
+
+                this.ProcessMessage(null, buffer);
+
+            }
+            catch { }
         }
+
+        private void ProcessMessage(EndPoint clientendPoint, byte[] buffer)
+        {
+            using (MemoryStream ms = new MemoryStream(buffer))
+            {
+                byte[] messageTypeHeader = new byte[4]; // to indentify the object
+                ms.Read(messageTypeHeader, 0, 4);
+
+                int objectType = BitConverter.ToInt16(messageTypeHeader, 0);
+
+                RemotingCommands messageType = (RemotingCommands)objectType;
+                Debug.WriteLine($"Received a message {messageType}");
+
+                IMessage message = null;
+
+                switch (messageType)
+                {
+                    case RemotingCommands.Unknown:
+                        break;
+                    case RemotingCommands.ConnectionRequest:
+                        message = ConnectRequestMsg.Parser.ParseFrom(ms);
+                        break;
+                    case RemotingCommands.ConnectionResponse:
+                        message = ConnectResponseMsg.Parser.ParseFrom(ms);
+                        break;
+                    default:
+                        Console.WriteLine("Fatal error.");
+                        break;
+                }
+
+                if (message != null)
+                    MessageRaised?.Invoke(null, new ExchangeMessage(message, clientendPoint));
+            }
+        }
+
+
     }
 }

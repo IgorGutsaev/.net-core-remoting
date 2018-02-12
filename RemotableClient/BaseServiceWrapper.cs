@@ -20,6 +20,7 @@ namespace RemotableClient
         private string Connect()
         {
             Debug.WriteLine($"Send connection request to {_proxy.GetServerEndpoint()}");
+
             ConnectRequestMsg message = new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest, Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.Now.ToUniversalTime()) };
             return this._proxy.Invoke(message).ToString();
         }

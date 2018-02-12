@@ -55,6 +55,9 @@ namespace RemotableServer
                         using (_NetworkStream = tcpClient.GetStream())
                         {
                             this._IncomeDataHandler?.Invoke(_NetworkStream, tcpClient.Client.RemoteEndPoint);
+
+
+                            tcpClient.Client.Send(new byte[512]);
                         }
 
                       ////  newChannel.ConnectionClosed += (sender, channelUid) => { Debug.WriteLine($"Channel '{channelUid}' is closed."); this._Channels.RemoveAll(c => c.Uid == channelUid); };

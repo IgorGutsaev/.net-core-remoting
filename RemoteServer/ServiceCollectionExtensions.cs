@@ -13,7 +13,7 @@ namespace RemotableServer
     {
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddScoped<INetListenerHandle>(sp => new NetListenerHandler())
+            return serviceCollection.AddScoped<INetListenerHandler>(sp => new NetListenerHandler())
                 .AddScoped<INetSenderHandler>(sp => new NetSenderHandler())
                 .AddScoped<IClientProxy, ClientProxy>();
         }

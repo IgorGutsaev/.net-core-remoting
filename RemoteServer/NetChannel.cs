@@ -78,14 +78,14 @@ namespace RemotableServer
                             try
                             {
                                 stream.Write(package.Data, 0, package.Data.Length);
-                                stream.ReadTimeout = 100;
+                                stream.ReadTimeout = 100000;
 
+                                
                                 byte[] data = new byte[512];
                                 stream.Read(data, 0, data.Length);
-
                                 this._incomeDataHandler?.Invoke(data);
                             }
-                            catch (System.IO.IOException)
+                            catch (System.IO.IOException ex)
                             {
                                 if (!keepAlive) Trace.WriteLine("user requested TcpClient shutdown.");
                                 else Trace.WriteLine("disconnected");
