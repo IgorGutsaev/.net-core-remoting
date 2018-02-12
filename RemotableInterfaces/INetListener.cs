@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RemotableInterfaces
 {
-    public interface INetChannelListener
+    public interface INetListener
     {
         void Start();
         void Stop();

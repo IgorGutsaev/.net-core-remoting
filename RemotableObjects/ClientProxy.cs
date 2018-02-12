@@ -33,7 +33,7 @@ namespace RemotableObjects
         public object Invoke(object data)
         {
             this._channel.Send(this._senderHandler.Pack(this.ServiceUid, data));
-          
+
             return "Some data";
         }
 

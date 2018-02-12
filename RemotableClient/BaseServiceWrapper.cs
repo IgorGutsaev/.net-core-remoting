@@ -7,14 +7,14 @@ namespace RemotableClient
 {
     internal abstract class BaseServiceWrapper
     {
-        private IClientProxy _proxy;
+        protected IClientProxy _proxy;
 
         public BaseServiceWrapper(IClientProxy proxy)
         {
-            Debug.WriteLine($"Start service at {DateTime.Now.Date.ToString("f")}");
+            Debug.WriteLine($"Start service at {DateTime.Now.ToString("F")}");
 
             this._proxy = proxy;
-            this.Connect();
+            string responce = this.Connect();
         }
 
         private string Connect()

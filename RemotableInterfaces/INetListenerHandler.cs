@@ -5,12 +5,14 @@ using System.Net.Sockets;
 
 namespace RemotableInterfaces
 {
+    public delegate void onMessageRaised(ExchangeMessage message, Action<byte[]> onProcess);
+
     public interface INetListenerHandler
     {
-        event EventHandler<ExchangeMessage> MessageRaised;
+        event onMessageRaised OnMessageRaised;
 
-        void Handle(Stream stream, EndPoint clientEndPoint);
+        void Handle(Stream stream, EndPoint clientEndPoint, Action<byte[]> responceAction);
 
-        void Handle2(byte[] data);
+        void Handle2(byte[] data, Action<byte[]> responseAction);
     }
 }

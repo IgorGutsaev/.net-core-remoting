@@ -17,8 +17,8 @@ namespace RemotableTests
             IBroker broker = new ServiceCollection()
                 .AddRemoting()
                 .AddSingleton<INetServerEndpointSettings, NetServerEndpointSettings>()
-                .AddSingleton<INetChannelListener>(sp => {
-                    return new NetChannelListener(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandler>().Handle);
+                .AddSingleton<INetListener>(sp => {
+                    return new NetListener(sp.GetRequiredService<INetServerEndpointSettings>(), sp.GetRequiredService<INetListenerHandler>().Handle);
                 })
                 .AddSingleton<IBroker, Broker>()
                 .BuildServiceProvider()
@@ -32,7 +32,7 @@ namespace RemotableTests
             .BuildServiceProvider()
             .GetRequiredService<IMyService>();
             
-             //  service.Do();
+             service.Do();
 
             System.Threading.Thread.Sleep(100000);
 

@@ -20,13 +20,13 @@ namespace RemotableServer
         private BlockingCollection<NetPackage> _PackageQueue = new BlockingCollection<NetPackage>(); // message queue 
 
         public INetServerEndpointSettings _settings;
-        private Action<byte[]> _incomeDataHandler;
+        private Action<byte[], Action<byte[]>> _incomeDataHandler;
 
         /// <summary>
         /// For client
         /// </summary>
         /// <param name="settings"></param>
-        public NetChannel(INetServerEndpointSettings settings, Action<byte[]> incomeDataHandler)
+        public NetChannel(INetServerEndpointSettings settings, Action<byte[], Action<byte[]>> incomeDataHandler)
         {
             this._settings = settings;
             this._incomeDataHandler = incomeDataHandler;
@@ -78,12 +78,11 @@ namespace RemotableServer
                             try
                             {
                                 stream.Write(package.Data, 0, package.Data.Length);
-                                stream.ReadTimeout = 100000;
-
+                                stream.ReadTimeout = 100* 1000; // 100 sec
                                 
                                 byte[] data = new byte[512];
                                 stream.Read(data, 0, data.Length);
-                                this._incomeDataHandler?.Invoke(data);
+                                this._incomeDataHandler?.Invoke(data, null);
                             }
                             catch (System.IO.IOException ex)
                             {

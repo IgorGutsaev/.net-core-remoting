@@ -11,13 +11,13 @@ namespace RemotableServer
 {
     public class NetListenerHandler : INetListenerHandler
     {
-        public event EventHandler<ExchangeMessage> MessageRaised;
-
         public NetListenerHandler()
         {
         }
 
-        public void Handle(Stream stream, EndPoint clientendPoint)
+        public event onMessageRaised OnMessageRaised;
+
+        public void Handle(Stream stream, EndPoint clientendPoint, Action<byte[]> responseAction)
         {
             try
             {
@@ -27,7 +27,7 @@ namespace RemotableServer
 
                 var buffer = new byte[totalLength];
                 stream.Read(buffer, 0, buffer.Length);
-                ProcessMessage(clientendPoint, buffer);
+                ProcessMessage(clientendPoint, buffer, responseAction);
             }
             catch (Exception ex)
             {
@@ -35,7 +35,7 @@ namespace RemotableServer
             }
         }
 
-        public void Handle2(byte[] data)
+        public void Handle2(byte[] data, Action<byte[]> responseAction)
         {
             try
             {
@@ -45,13 +45,13 @@ namespace RemotableServer
 
                 Array.Copy(data, 4, buffer, 0, totalLength);
 
-                this.ProcessMessage(null, buffer);
+                this.ProcessMessage(null, buffer, responseAction);
 
             }
             catch { }
         }
 
-        private void ProcessMessage(EndPoint clientendPoint, byte[] buffer)
+        private void ProcessMessage(EndPoint clientendPoint, byte[] buffer, Action<byte[]> responseAction)
         {
             using (MemoryStream ms = new MemoryStream(buffer))
             {
@@ -75,13 +75,16 @@ namespace RemotableServer
                     case RemotingCommands.ConnectionResponse:
                         message = ConnectResponseMsg.Parser.ParseFrom(ms);
                         break;
+                    case RemotingCommands.QueryInterface:
+                        message = QueryInterfaceMsg.Parser.ParseFrom(ms);
+                        break;
                     default:
                         Console.WriteLine("Fatal error.");
                         break;
                 }
 
-                if (message != null)
-                    MessageRaised?.Invoke(null, new ExchangeMessage(message, clientendPoint));
+                if (message != null && this.OnMessageRaised != null)
+                    this.OnMessageRaised(new ExchangeMessage(message, clientendPoint), (data) => { responseAction(data); });
             }
         }
 
