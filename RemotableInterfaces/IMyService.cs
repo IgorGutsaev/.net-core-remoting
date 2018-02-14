@@ -6,6 +6,10 @@ namespace RemotableInterfaces
 {
     public interface IMyService
     {
-        void Do();
+        event EventHandler<SomeClassB> OnSomeBDetect;
+
+        SomeClassA Do(int valueInt, string valueString, SomeClassA someA);
+
+        int Do(string valueString, int valueInt, SomeClassA someA);
     }
 }

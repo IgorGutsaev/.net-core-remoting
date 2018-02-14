@@ -6,10 +6,9 @@ namespace RemotableInterfaces
 {
     public class NetPackage
     {
-        public string serviceUid;
         public byte[] Data { get; private set; }
 
-        public static NetPackage Create(string serviceUid, byte[] data) =>
-            new NetPackage { serviceUid = serviceUid, Data = data };
+        public static NetPackage Create(byte[] data) =>
+            new NetPackage { Data = data };
     }
 }

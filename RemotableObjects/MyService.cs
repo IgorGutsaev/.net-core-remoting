@@ -7,9 +7,17 @@ namespace RemotableObjects
 {
     public class MyService : IMyService
     {
-        public void Do()
+        public event EventHandler<SomeClassB> OnSomeBDetect;
+
+        public SomeClassA Do(int valueInt, string valueString, SomeClassA someA)
         {
-            throw new NotImplementedException();
+            this.OnSomeBDetect?.Invoke(null, someA.Child);
+            return someA;// $"Hello, world! {valueInt} {valueString}";
+        }
+
+        public int Do(string valueString, int valueInt, SomeClassA someA)
+        {
+            return valueInt;
         }
     }
 }

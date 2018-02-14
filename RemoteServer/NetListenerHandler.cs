@@ -9,49 +9,31 @@ using RemotableInterfaces;
 
 namespace RemotableServer
 {
+    /// <summary>
+    /// Stream processing
+    /// </summary>
     public class NetListenerHandler : INetListenerHandler
     {
-        public NetListenerHandler()
-        {
-        }
-
         public event onMessageRaised OnMessageRaised;
 
-        public void Handle(Stream stream, EndPoint clientendPoint, Action<byte[]> responseAction)
+        /// <summary>
+        /// Process 
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="clientendPoint"></param>
+        /// <param name="responseAction"></param>
+        public void Process(Stream stream, Action<byte[]> responseAction)
         {
-            try
-            {
-                byte[] totalLenBuff = new byte[4];
-                stream.Read(totalLenBuff, 0, totalLenBuff.Length);
-                int totalLength = BitConverter.ToInt32(totalLenBuff, 0);
+            byte[] totalLenBuff = new byte[4];
+            stream.Read(totalLenBuff, 0, totalLenBuff.Length);
+            int totalLength = BitConverter.ToInt32(totalLenBuff, 0);
 
-                var buffer = new byte[totalLength];
-                stream.Read(buffer, 0, buffer.Length);
-                ProcessMessage(clientendPoint, buffer, responseAction);
-            }
-            catch (Exception ex)
-            {
-
-            }
+            var buffer = new byte[totalLength];
+            stream.Read(buffer, 0, buffer.Length);
+            ProcessMessage(buffer, responseAction);
         }
 
-        public void Handle2(byte[] data, Action<byte[]> responseAction)
-        {
-            try
-            {
-                int totalLength = BitConverter.ToInt32(data, 0);
-
-                var buffer = new byte[totalLength];
-
-                Array.Copy(data, 4, buffer, 0, totalLength);
-
-                this.ProcessMessage(null, buffer, responseAction);
-
-            }
-            catch { }
-        }
-
-        private void ProcessMessage(EndPoint clientendPoint, byte[] buffer, Action<byte[]> responseAction)
+        private void ProcessMessage(byte[] buffer, Action<byte[]> responseAction)
         {
             using (MemoryStream ms = new MemoryStream(buffer))
             {
@@ -78,16 +60,23 @@ namespace RemotableServer
                     case RemotingCommands.QueryInterface:
                         message = QueryInterfaceMsg.Parser.ParseFrom(ms);
                         break;
+                    case RemotingCommands.QueryInterfaceResponse:
+                        message = QueryInterfaceResponseMsg.Parser.ParseFrom(ms);
+                        break;
+                    case RemotingCommands.InvokeMethod:
+                        message = InvokeMethodMsg.Parser.ParseFrom(ms);
+                        break;
+                    case RemotingCommands.InvokeMethodResponse:
+                        message = InvokeMethodResponseMsg.Parser.ParseFrom(ms);
+                        break;
                     default:
-                        Console.WriteLine("Fatal error.");
+                        Debug.WriteLine("Fatal error.");
                         break;
                 }
 
                 if (message != null && this.OnMessageRaised != null)
-                    this.OnMessageRaised(new ExchangeMessage(message, clientendPoint), (data) => { responseAction(data); });
+                    this.OnMessageRaised(message, (data) => { responseAction(data); });
             }
         }
-
-
     }
 }

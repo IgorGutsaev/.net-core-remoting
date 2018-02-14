@@ -1,19 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using RemoteCommunication.RemotableProtocol;
 using System.Net;
-using RemotableServer;
-using RemotableInterfaces;
-using System.IO;
 
-namespace RemotableInterface
+namespace RemotableInterfaces
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public interface IClientProxy
     {
-        IPEndPoint GetServerEndpoint();
-        object Invoke(object data); 
+        T InvokeMethod<T>(string methodName, MethodParameterMsg[] parameters);
+        void BuildRemoteService(string interfaceName);
     }
 }

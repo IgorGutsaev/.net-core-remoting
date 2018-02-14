@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace RemotableInterfaces
 {
-    public interface IBroker
+    public interface INetServerSettings
     {
+        IPEndPoint GetServerAddress();
     }
 }

@@ -7,6 +7,6 @@ namespace RemotableInterfaces
 {
     public interface INetSenderHandler
     {
-        NetPackage Pack(string serviceUid, object data);
+        NetPackage Pack(object data);
     }
 }

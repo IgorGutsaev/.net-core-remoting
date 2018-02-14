@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using RemotableInterface;
 using RemotableInterfaces;
-using RemotableInterfactes;
 using RemotableObjects;
 using System;
 using System.Collections.Generic;
@@ -13,9 +11,16 @@ namespace RemotableServer
     {
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddScoped<INetListenerHandler>(sp => new NetListenerHandler())
+            return serviceCollection.AddSingleton<INetServerSettings, NetServerSettings>()
+                .AddScoped<INetListenerHandler>(sp => new NetListenerHandler())
                 .AddScoped<INetSenderHandler>(sp => new NetSenderHandler())
                 .AddScoped<IClientProxy, ClientProxy>();
+        }
+
+        public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)
+        {
+            return serviceCollection.AddSingleton<INetListener, NetListener>()
+                .AddSingleton<IBroker, Broker>();
         }
     }
 }
