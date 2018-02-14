@@ -8,12 +8,12 @@ namespace RemotableInterfaces
 {
     public delegate void onMessageRaised(IMessage message, Action<byte[]> onProcess);
 
-    public interface INetListenerHandler
+    public interface INetHandler
     {
         event onMessageRaised OnMessageRaised;
 
-        void Process(Stream stream, Action<byte[]> responseAction);
+        void Process(Stream stream, Action<NetPackage> responseAction);
 
-        //void Handle2(byte[] data, Action<byte[]> responseAction);
+        NetPackage Pack(object data);
     }
 }

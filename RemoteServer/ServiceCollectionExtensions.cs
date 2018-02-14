@@ -12,14 +12,13 @@ namespace RemotableServer
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
             return serviceCollection.AddSingleton<INetServerSettings, NetServerSettings>()
-                .AddScoped<INetListenerHandler>(sp => new NetListenerHandler())
-                .AddScoped<INetSenderHandler>(sp => new NetSenderHandler())
+                .AddScoped<INetHandler>(sp => new NetHandler())
                 .AddScoped<IClientProxy, ClientProxy>();
         }
 
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddSingleton<INetListener, NetListener>()
+            return serviceCollection//.AddSingleton<INetListener, NetListener>()
                 .AddSingleton<IBroker, Broker>();
         }
     }

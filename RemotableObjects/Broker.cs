@@ -17,91 +17,89 @@ namespace RemotableObjects
 {
     public class Broker : List<IServerProxy>, IBroker
     {
-        private INetListenerHandler _Handler;
-        private INetListener _Listener;
-        private INetSenderHandler _SenderHandler;
+        private INetHandler _Handler;
+        private INetChannel _Channel;
         private ServiceProvider Provider;
 
-        public Broker(INetListenerHandler handler, INetListener listener, INetSenderHandler senderHandler)
+        public Broker(INetHandler handler, INetChannel channel)
         {
             this._Handler = handler;
-            this._Listener = listener;
-            this._SenderHandler = senderHandler;
-            this._Handler.OnMessageRaised += _Handler_OnMessageRaised;
+            this._Channel = channel;
+          //  this._Handler.OnMessageRaised += _Handler_OnMessageRaised;
 
             this.Provider = new ServiceCollection()
              .AddScoped<IMyService, MyService>()
              .BuildServiceProvider();
 
-            this._Listener.Start();
+            this._Channel.Start(true);
         }
 
-        private void _Handler_OnMessageRaised(IMessage incomeMessage, Action<byte[]> onProcess)
-        {
-            Action<IMessage> sendMessage = (responseMsg) =>
-            {
-                NetPackage package = this._SenderHandler.Pack(responseMsg);
-                onProcess(package.Data);
-            };
+        //private void _Handler_OnMessageRaised(IMessage incomeMessage, Action<byte[]> onProcess)
+        //{
+        //    Action<IMessage> sendMessage = (responseMsg) =>
+        //    {
+        //        NetPackage package = this._SenderHandler.Pack(responseMsg);
+        //        onProcess(package.Data);
+        //    };
 
-            IMessage responseMessage = null;
+        //    IMessage responseMessage = null;
 
-            try
-            {
-                if (incomeMessage is ConnectRequestMsg)
-                {
-                    //throw new Exception("Trouble!");
-                    responseMessage = new ConnectResponseMsg { Message = "+ok", Type = RemotingCommands.ConnectionResponse };
-                }
-                else if (incomeMessage is QueryInterfaceMsg)
-                {
-                    QueryInterfaceMsg queryMessage = (QueryInterfaceMsg)incomeMessage;
-                    responseMessage = this.CreateRemoteService(queryMessage.InterfaceName);
-                }
-                else if (incomeMessage is InvokeMethodMsg)
-                {
-                    InvokeMethodMsg invokeMessage = (InvokeMethodMsg)incomeMessage;
-                    var service = this.FirstOrDefault(x=>x.GetUid() == invokeMessage.InterfaceGuid);
-                    if (service == null)
-                        throw new CommunicationException($"Service {invokeMessage.InterfaceGuid} not found!");
+        //    try
+        //    {
+        //        if (incomeMessage is ConnectRequestMsg)
+        //        {
+        //            //throw new Exception("Trouble!");
+        //            responseMessage = new ConnectResponseMsg { Message = "+ok", Type = RemotingCommands.ConnectionResponse };
+        //        }
+        //        else if (incomeMessage is QueryInterfaceMsg)
+        //        {
+        //            QueryInterfaceMsg queryMessage = (QueryInterfaceMsg)incomeMessage;
+        //            responseMessage = this.CreateRemoteService(queryMessage.InterfaceName);
+        //        }
+        //        else if (incomeMessage is InvokeMethodMsg)
+        //        {
+        //            InvokeMethodMsg invokeMessage = (InvokeMethodMsg)incomeMessage;
+        //            var service = this.FirstOrDefault(x=>x.GetUid() == invokeMessage.InterfaceGuid);
+        //            if (service == null)
+        //                throw new CommunicationException($"Service {invokeMessage.InterfaceGuid} not found!");
 
-                    #region Deserialize parameters // Move to helper
-                    List<MethodParameter> deserializedParameters = new List<MethodParameter>();
+        //            #region Deserialize parameters // Move to helper
+        //            List<MethodParameter> deserializedParameters = new List<MethodParameter>();
 
-                    MethodParameterMsg[] serializedParameters = invokeMessage.Parameters.ToArray();
-                    foreach (var p in serializedParameters)
-                    {
-                        using (var stream = new MemoryStream(p.Value.ToByteArray()))
-                        {
-                            Type parType = Type.GetType(p.Type);
-                            object variable = Serializer.Deserialize(parType, stream);
-                            MethodParameter prm = new MethodParameter(p.Name, parType, variable);
-                            deserializedParameters.Add(prm);
-                        }
-                    }
-                    #endregion
+        //            MethodParameterMsg[] serializedParameters = invokeMessage.Parameters.ToArray();
+        //            foreach (var p in serializedParameters)
+        //            {
+        //                using (var stream = new MemoryStream(p.Value.ToByteArray()))
+        //                {
+        //                    Type parType = Type.GetType(p.Type);
+        //                    object variable = Serializer.Deserialize(parType, stream);
+        //                    MethodParameter prm = new MethodParameter(p.Name, parType, variable);
+        //                    deserializedParameters.Add(prm);
+        //                }
+        //            }
+        //            #endregion
 
-                    object result = service.InvokeMethod(invokeMessage.Method, deserializedParameters);
+        //            object result = service.InvokeMethod(invokeMessage.Method, deserializedParameters);
 
-                    using (var stream = new MemoryStream())
-                    {
-                        Serializer.Serialize(stream, result);
-                        responseMessage = new InvokeMethodResponseMsg { Type = RemotingCommands.InvokeMethodResponse, Result = ByteString.CopyFrom(stream.ToArray()) };
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                responseMessage = new RemotingExceptionMsg
-                {
-                    Message = ex.Message,
-                    Type = RemotingCommands.Exception
-                };
-            }
+        //            using (var stream = new MemoryStream())
+        //            {
+        //                Serializer.Serialize(stream, result);
+        //                responseMessage = new InvokeMethodResponseMsg { Type = RemotingCommands.InvokeMethodResponse, Result = ByteString.CopyFrom(stream.ToArray()) };
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        responseMessage = new RemotingExceptionMsg
+        //        {
+        //            Message = ex.Message,
+        //            Type = RemotingCommands.Exception
+        //        };
+        //    }
 
-            if (responseMessage != null)
-                sendMessage(responseMessage);
-        }
+        //    if (responseMessage != null)
+        //        sendMessage(responseMessage);
+        //}
 
         private QueryInterfaceResponseMsg CreateRemoteService(string ServiceName)
         {

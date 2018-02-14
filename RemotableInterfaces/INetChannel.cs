@@ -6,8 +6,8 @@ namespace RemotableInterfaces
 {
     public interface INetChannel
     {
-        void Start();
-        void Send(NetPackage package, Action<byte[]> handler);
+        void Start(bool isServer);
+        void Send(NetPackage package, Action<byte[]> handler, IPEndPoint destination = null);
         void Disconnect();
     }
 }

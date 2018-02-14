@@ -19,14 +19,13 @@ namespace RemotableObjects
     {
         private string _ServiceProxyToken;
         private INetChannel _channel;
-        private INetSenderHandler _senderHandler;
+        private INetHandler _handler;
 
-        public ClientProxy(INetChannel channel, INetSenderHandler senderHandler)
+        public ClientProxy(INetChannel channel, INetHandler handler)
         {
             this._channel = channel;
-            this._senderHandler = senderHandler;
-       
-            this._channel.Start();
+            this._handler = handler;
+            this._channel.Start(false);
 
             this.Connect();
         }
@@ -84,7 +83,7 @@ namespace RemotableObjects
                 stopWaitHandle.Set();
             };
 
-            this._channel.Send(this._senderHandler.Pack(outgoingMessage), handleMessage);
+            this._channel.Send(this._handler.Pack(outgoingMessage), handleMessage);
             stopWaitHandle.WaitOne();
 
             return (T)result;

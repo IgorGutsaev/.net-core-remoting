@@ -1,4 +1,5 @@
 ﻿using RemotableInterfaces;
+using System;
 using System.Net;
 
 namespace RemotableObjects
@@ -7,6 +8,7 @@ namespace RemotableObjects
     {
         public IPEndPoint ServerEndpoint { get; private set; }
             = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 65432);
+
 
         public IPEndPoint GetServerAddress()
         {
