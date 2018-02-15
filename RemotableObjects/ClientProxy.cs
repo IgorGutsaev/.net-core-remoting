@@ -25,7 +25,7 @@ namespace RemotableObjects
         {
             this._channel = channel;
             this._handler = handler;
-            this._channel.Start(false);
+            this._channel.Start(false); // У тебя один экземпляр канала из-за DI!!!!
 
             this.Connect();
         }

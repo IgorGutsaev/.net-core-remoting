@@ -17,13 +17,11 @@ namespace RemotableObjects
 {
     public class Broker : List<IServerProxy>, IBroker
     {
-        private INetHandler _Handler;
         private INetChannel _Channel;
         private ServiceProvider Provider;
 
-        public Broker(INetHandler handler, INetChannel channel)
+        public Broker(INetChannel channel)
         {
-            this._Handler = handler;
             this._Channel = channel;
           //  this._Handler.OnMessageRaised += _Handler_OnMessageRaised;
 

@@ -19,7 +19,7 @@ namespace RemotableServer
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)
         {
             return serviceCollection//.AddSingleton<INetListener, NetListener>()
-                .AddSingleton<IBroker, Broker>();
+                .AddSingleton<IBroker>(sp => { return new Broker(new TcpNetChannel(sp.GetRequiredService<INetServerSettings>(), sp.GetRequiredService<INetHandler>())); });
         }
     }
 }
