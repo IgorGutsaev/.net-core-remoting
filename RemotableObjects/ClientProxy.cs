@@ -44,7 +44,7 @@ namespace RemotableObjects
                     CallbackPort = (uint)myEndpoint.Port
                 };
 
-            string serviceUid = _channel.Invoke<string>(message);
+            string serviceUid = _channel.Invoke(message).ToString();
 
             if (String.IsNullOrWhiteSpace(serviceUid))
                 throw new CommunicationException("Server cannot create a proxy!");
@@ -52,7 +52,7 @@ namespace RemotableObjects
             this._ServiceProxyToken = serviceUid;
         }
 
-        public T InvokeMethod<T>(string methodName, MethodParameter[] parameters)
+        public object InvokeMethod(string methodName, MethodParameter[] parameters)
         {
             Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: invoke method '{methodName}' in proxied service");
 
@@ -84,7 +84,7 @@ namespace RemotableObjects
                     Parameters = { repeatableParamsContainer }
                 };
 
-            return this._channel.Invoke<T>(message);
+            return this._channel.Invoke(message);
         }
 
         public void Dispose()

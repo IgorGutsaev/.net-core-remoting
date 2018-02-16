@@ -147,7 +147,7 @@ namespace RemotableObjects
             ConnectRequestMsg message =
                 new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest };
 
-            string response = this.Invoke<string>(message);
+            string response = this.Invoke(message).ToString();
 
             Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: server response is '{response}'");
 
@@ -156,7 +156,7 @@ namespace RemotableObjects
 
             return true;
         }
-
+        /* Cant use generic cause dispatch proxy not allow
         /// <summary>
         /// 
         /// </summary>
@@ -178,11 +178,34 @@ namespace RemotableObjects
             stopWaitHandle.WaitOne();
 
             return (T)result;
-        }
+        }*/
 
-        public void Invoke(object outgoingMessage)
+        //public void Invoke(object outgoingMessage)
+        //{
+        //    this.Send(_handler.Pack(outgoingMessage));
+        //}
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="outgoingMessage">Message</param>
+        /// <returns></returns>
+        public object Invoke(object outgoingMessage)
         {
-            this.Send(_handler.Pack(outgoingMessage));
+            object result = null;
+            AutoResetEvent stopWaitHandle = new AutoResetEvent(false);
+
+            Action<object> handleResult = (incomeData) =>
+            {
+                result = incomeData;
+
+                stopWaitHandle.Set();
+            };
+
+            this.Send(_handler.Pack(outgoingMessage), handleResult); //, handleMessage
+            stopWaitHandle.WaitOne();
+
+            return result;
         }
 
         /// <summary>

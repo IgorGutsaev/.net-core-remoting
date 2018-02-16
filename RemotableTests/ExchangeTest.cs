@@ -4,6 +4,7 @@ using RemotableInterfaces;
 using RemotableObjects;
 using RemotableServer;
 using System;
+using System.Diagnostics;
 using Xunit;
 
 namespace RemotableTests
@@ -19,6 +20,7 @@ namespace RemotableTests
                 .AddRemotingClient()
                 .BuildServiceProvider();
 
+
             RemotingServer server = provider.GetRequiredService<RemotingServer>();
             IMyService service = provider.GetRequiredService<IMyService>();
             service.OnSomeBDetect += Service_OnSomeBDetect;
@@ -30,7 +32,7 @@ namespace RemotableTests
 
         private void Service_OnSomeBDetect(object sender, SomeClassB e)
         {
-            throw new NotImplementedException();
+            Debug.WriteLine(e.GetType().ToString() + " detected!");
         }
     }
 }

@@ -9,6 +9,11 @@ namespace RemotableObjects
     {
         public event EventHandler<SomeClassB> OnSomeBDetect;
 
+        public MyService()
+        {
+
+        }
+
         public SomeClassA Do(int valueInt, string valueString, SomeClassA someA)
         {
             this.OnSomeBDetect?.Invoke(null, someA.Child);

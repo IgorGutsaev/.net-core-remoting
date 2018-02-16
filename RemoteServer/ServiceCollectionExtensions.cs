@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using RemotableInterfaces;
 using RemotableObjects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RemotableServer
 {
@@ -13,9 +10,9 @@ namespace RemotableServer
         {
             return serviceCollection.AddSingleton<INetServerSettings, NetServerSettings>()
                 .AddTransient<INetChannel, TcpNetChannel>()
-                .AddScoped<INetHandler, NetHandler>()
+                .AddSingleton<INetHandler, NetHandler>()
                 .AddScoped<IBroker, Broker>()
-                .AddScoped<IClientProxy, ClientProxy>();
+                .AddTransient<IClientProxy, ClientProxy>();
         }
 
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)

@@ -16,7 +16,11 @@ namespace RemotableObjects
             stream.Read(totalLenBuff, 0, totalLenBuff.Length);
             int totalLength = BitConverter.ToInt32(totalLenBuff, 0);
 
+            if (totalLength == 0)
+                return null;
+
             var buffer = new byte[totalLength];
+
             stream.Read(buffer, 0, buffer.Length);
 
             IMessage incomeMessage = null;

@@ -8,7 +8,7 @@ namespace RemotableInterfaces
     {
         event EventHandler<ServiceEvent> OnEvent;
 
-        T InvokeMethod<T>(string methodName, MethodParameter[] parameters);
+        object InvokeMethod(string methodName, MethodParameter[] parameters);
         void BuildRemoteService(string interfaceName);
     }
 }
