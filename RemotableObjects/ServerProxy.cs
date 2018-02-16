@@ -7,21 +7,16 @@ using System.Reflection;
 
 namespace RemotableObjects
 {
-    public class ServerProxy<TService> : IServerProxy
+    public class ServerProxy : IServerProxy
     {
         public delegate void onEventRaised(string serviceUid, object someEvent, IPEndPoint callbackEndpoint);
         public event onEventRaised OnEventRaised;
 
         public string Uid { get; private set; } = Guid.NewGuid().ToString();
         public IPEndPoint _callbackEndpoint;
-        private TService _service;
+        private object _service;
 
-        public bool isCreated
-        {
-            get { return !String.IsNullOrWhiteSpace(this.Uid) && _service != null; }
-        }
-
-        public ServerProxy(TService service, IPEndPoint callbackEndpoint)
+        public ServerProxy(object service, IPEndPoint callbackEndpoint)
         {
             _service = service;
             _callbackEndpoint = callbackEndpoint;
@@ -31,7 +26,7 @@ namespace RemotableObjects
             foreach (var eventInfo in eventInfoes)
             {
                 Type typeEventParam = eventInfo.EventHandlerType;
-                MethodInfo miHandler = typeof(ServerProxy<TService>).GetMethod("EventHandler");
+                MethodInfo miHandler = typeof(ServerProxy).GetMethod("EventHandler");
 
                 Delegate d = Delegate.CreateDelegate(typeEventParam, this, miHandler);
  

@@ -30,27 +30,15 @@ namespace RemotableObjects
 
         public string CreateService(string serviceName, IPEndPoint endpoint)
         {
-            string name = serviceName.ToLowerInvariant().Trim();
-            string serviceGuid = "";
+            Type interfaceType = Type.GetType(serviceName);
 
-            switch (name)
-            {
-                case "imyservice":
-                    IMyService myService = this.Provider.GetRequiredService<IMyService>();
-                    ServerProxy<IMyService> proxy = new ServerProxy<IMyService>(myService, endpoint);
-                    if (proxy.isCreated)
-                    {
-                        this.Add(proxy);
-                        proxy.OnEventRaised += (serviceUid, someEvent, callbackEndpoint) => { this.OnEventRaised?.Invoke(new ServiceEvent { ServiceUid = serviceUid, Data = someEvent }, callbackEndpoint); };
-                    }
+            var instance = this.Provider.GetRequiredService(interfaceType);
 
-                    serviceGuid = proxy.Uid;
-                    break;
-                default:
-                    throw new ArgumentException($"Cannot create Unknown service '{serviceName}'!");
-            }
+            ServerProxy proxy = new ServerProxy(instance, endpoint);
+            this.Add(proxy);
+            proxy.OnEventRaised += (serviceUid, someEvent, callbackEndpoint) => { this.OnEventRaised?.Invoke(new ServiceEvent { ServiceUid = serviceUid, Data = someEvent }, callbackEndpoint); };
 
-            return serviceGuid;
+            return proxy.Uid;
         }
 
         public object InvokeMethod(string serviceUid, string methodName, List<MethodParameter> parameters)

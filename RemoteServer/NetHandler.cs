@@ -31,7 +31,9 @@ namespace RemotableServer
             {
                 IMessage income = ProtobufMessageParser.GetMessage(stream);
 
-                if (income is ConnectRequestMsg)
+                if (income == null)
+                    return null;
+                else if (income is ConnectRequestMsg)
                     return Prepared(new ConnectResponseMsg { Type = RemotingCommands.ConnectionResponse, Message = "+ok" });
                 if (income is ConnectResponseMsg)
                     handleResult(((ConnectResponseMsg)income).Message);

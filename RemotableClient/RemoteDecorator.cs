@@ -19,10 +19,9 @@ namespace RemotableClient
         private void SetProxy(IClientProxy clientProxy)
         {
             _clientProxy = clientProxy;
-            // get target interface name
-            string interfaceName = _decorated.GetType().GetInterfaces().FirstOrDefault()?.Name;
+            
             // build remote interface
-            _clientProxy.BuildRemoteService(interfaceName);
+            _clientProxy.BuildRemoteService(_decorated.GetType().GetInterfaces().FirstOrDefault());// build target interface
             _clientProxy.OnEvent += _proxy_OnEvent;
         }
 

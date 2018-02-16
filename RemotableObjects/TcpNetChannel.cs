@@ -22,8 +22,6 @@ namespace RemotableObjects
     {
         public event EventHandler<ServiceEvent> OnEvent;
 
-        public string Guid = DateTime.Now.ToString("G");
-
         public class SendUnit
         {
             public IPEndPoint Endpoint;
@@ -156,34 +154,6 @@ namespace RemotableObjects
 
             return true;
         }
-        /* Cant use generic cause dispatch proxy not allow
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="outgoingMessage">Message</param>
-        /// <returns></returns>
-        public T Invoke<T>(object outgoingMessage)
-        {
-            object result = null;
-            AutoResetEvent stopWaitHandle = new AutoResetEvent(false);
-
-            Action<object> handleResult = (incomeData) =>
-            {
-                result = incomeData;
-
-                stopWaitHandle.Set();
-            };
-
-            this.Send(_handler.Pack(outgoingMessage), handleResult); //, handleMessage
-            stopWaitHandle.WaitOne();
-
-            return (T)result;
-        }*/
-
-        //public void Invoke(object outgoingMessage)
-        //{
-        //    this.Send(_handler.Pack(outgoingMessage));
-        //}
 
         /// <summary>
         /// 

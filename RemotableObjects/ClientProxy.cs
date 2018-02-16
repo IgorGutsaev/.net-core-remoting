@@ -30,16 +30,16 @@ namespace RemotableObjects
             _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };
         }
 
-        public void BuildRemoteService(string interfaceName)
+        public void BuildRemoteService(Type interfaceType)
         {
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: ask the server to build '{interfaceName}' proxied service");
+            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: ask the server to build '{interfaceType.FullName}' proxied service");
 
             IPEndPoint myEndpoint = _channel.GetCallbackAddress();
             QueryInterfaceMsg message =
                 new QueryInterfaceMsg
                 {
                     Type = RemotingCommands.QueryInterface,
-                    InterfaceName = interfaceName,
+                    InterfaceName = interfaceType.AssemblyQualifiedName,
                     CallbackAddress = myEndpoint.Address.ToString(),
                     CallbackPort = (uint)myEndpoint.Port
                 };

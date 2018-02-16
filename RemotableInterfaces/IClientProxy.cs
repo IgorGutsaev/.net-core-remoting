@@ -9,6 +9,6 @@ namespace RemotableInterfaces
         event EventHandler<ServiceEvent> OnEvent;
 
         object InvokeMethod(string methodName, MethodParameter[] parameters);
-        void BuildRemoteService(string interfaceName);
+        void BuildRemoteService(Type interfaceType);
     }
 }

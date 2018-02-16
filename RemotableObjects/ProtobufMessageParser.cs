@@ -16,7 +16,7 @@ namespace RemotableObjects
             stream.Read(totalLenBuff, 0, totalLenBuff.Length);
             int totalLength = BitConverter.ToInt32(totalLenBuff, 0);
 
-            if (totalLength == 0)
+            if (totalLength == 0) // no return 
                 return null;
 
             var buffer = new byte[totalLength];
@@ -71,7 +71,6 @@ namespace RemotableObjects
 
             if (incomeMessage is RemotingExceptionMsg)
                 throw new Exception(((RemotingExceptionMsg)incomeMessage).Message);
-
 
             return incomeMessage;
         }

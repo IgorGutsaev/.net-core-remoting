@@ -12,7 +12,6 @@ namespace RemotableInterfaces
         void Stop();
         bool Connect();
         object Invoke(object outgoingMessage);
-      //  void Invoke(object outgoingMessage);
         void Send(NetPackage package, Action<object> handleResult, IPEndPoint destination = null);        
         IPEndPoint GetCallbackAddress();
     }
