@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using RemotableInterfaces;
+using RemotableObjects;
 
 namespace RemotableClient
 {
@@ -7,8 +8,7 @@ namespace RemotableClient
     {
         public static IServiceCollection AddRemotingClient(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddSingleton<INetChannel, TcpNetChannel>()
-                .AddScoped<IMyService, MyServiceWrapper>(); // proxied service
+            return serviceCollection.AddScoped<IMyService, MyServiceProxy>();
         }
     }
 }

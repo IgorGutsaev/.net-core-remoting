@@ -6,13 +6,13 @@ using System.Net.Sockets;
 
 namespace RemotableInterfaces
 {
-    public delegate void onMessageRaised(IMessage message, Action<byte[]> onProcess);
+    public delegate void onEventRaised(ServiceEvent ev, IPEndPoint endpoint);
 
     public interface INetHandler
     {
-        event onMessageRaised OnMessageRaised;
+        event onEventRaised OnEventRaised;
 
-        void Process(Stream stream, Action<NetPackage> responseAction);
+        NetPackage ProcessRequest(Stream stream, Action<object> handleResult);
 
         NetPackage Pack(object data);
     }

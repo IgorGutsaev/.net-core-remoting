@@ -1,8 +1,11 @@
 ﻿using Google.Protobuf;
+using ProtoBuf;
 using RemotableInterfaces;
+using RemoteCommunication.RemotableProtocol;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -17,11 +20,15 @@ namespace RemotableObjects
     /// </summary>
     public class TcpNetChannel : INetChannel
     {
+        public event EventHandler<ServiceEvent> OnEvent;
+
+        public string Guid = DateTime.Now.ToString("G");
+
         public class SendUnit
         {
             public IPEndPoint Endpoint;
             public NetPackage Pakage;
-            public Action<byte[]> Handler;
+            public Action<object> Handler;
         }
 
         #region Variables
@@ -30,7 +37,6 @@ namespace RemotableObjects
 
         private INetServerSettings _serverSettings;
         private INetHandler _handler;
-        private TcpClient _TcpClient;
         private TcpListener _Listener;
         private NetworkStream _NetworkStream = null;
         #endregion
@@ -39,29 +45,37 @@ namespace RemotableObjects
         {
             this._serverSettings = serverSettings;
             this._handler = handler;
-            this._handler.OnMessageRaised += _Handler_OnMessageRaised;
+            this._handler.OnEventRaised += _handler_OnMessageRaised;
         }
 
-        private void _Handler_OnMessageRaised(IMessage message, Action<byte[]> onProcess)
+        private void _handler_OnMessageRaised(ServiceEvent ev, IPEndPoint endpoint)
         {
-            onProcess(message.ToByteArray());
+            string type = ev.Data.GetType().IsGenericType ? ev.Data.GetType().FullName : ev.Data.GetType().AssemblyQualifiedName;
+
+            using (var ms = new MemoryStream())
+            {
+                Serializer.Serialize(ms, ev.Data);
+
+                TriggerEventMsg message =
+                    new TriggerEventMsg { ServiceUid = ev.ServiceUid, Type = RemotingCommands.TriggerEvent, EventType = type, Value = ByteString.CopyFrom(ms.ToArray()) };
+
+                this.Send(_handler.Pack(message), null, endpoint);
+            }
         }
 
-        public void Start(bool isServer)
+        public void Start()
         {
-            this._TcpClient = new TcpClient();
-
             IPEndPoint endpoint = this._serverSettings.GetServerAddress();
 
             _Listener = new TcpListener(endpoint.Address, !this.PortInUse(endpoint.Port) ? endpoint.Port : new Random().Next(65000, 65431));
             _Listener.Start();
 
-            Thread.Sleep(500);
-           
-            Debug.WriteLine($"Create tcp client");
+            Thread.Sleep(100);
+
             Debug.WriteLine($"Listening {_Listener.LocalEndpoint}");
 
-            Task receive = Task.Run(() => {
+            Task receive = Task.Run(() =>
+            {
                 try
                 {
                     while (!this.tokenSource.IsCancellationRequested)
@@ -72,14 +86,9 @@ namespace RemotableObjects
 
                             using (_NetworkStream = tcpClient.GetStream())
                             {
-                                if (isServer)
-                                    this._handler.Process(_NetworkStream
-                                        , (data) =>
-                                        {
-                                            _NetworkStream.Write(data.Data, 0, data.Data.Length);
-                                            //this.Send(data, null, (IPEndPoint)tcpClient.Client.RemoteEndPoint);
-                                        });
-                                else this._handler.Process(_NetworkStream, null);
+                                NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(null, (ServiceEvent)ev); });
+                                if (response != null)
+                                    _NetworkStream.Write(response.Data, 0, response.Data.Length);
                             }
                         }
                     }
@@ -105,14 +114,16 @@ namespace RemotableObjects
                         if (unit == null)
                             break;
 
-                        this._TcpClient.Connect(unit.Endpoint);
-                        using (NetworkStream stream = this._TcpClient.GetStream())
+                        using (TcpClient sClient = new TcpClient())
                         {
-                            stream.Write(unit.Pakage.Data, 0, unit.Pakage.Data.Length);
-                            stream.ReadTimeout = 100 * 1000; // 100 sec
+                            sClient.Connect(unit.Endpoint);
+                            using (NetworkStream stream = sClient.GetStream())
+                            {
+                                stream.Write(unit.Pakage.Data, 0, unit.Pakage.Data.Length);
+                                stream.ReadTimeout = 100 * 1000; // 100 sec
 
-                            if (!isServer)
-                                this._handler.Process(stream, null);
+                                _handler.ProcessRequest(stream, unit.Handler);//, unit.Handler);
+                            }
                         }
                     }
                     catch (Exception ex) { Trace.WriteLine($"{DateTime.Now.ToString("T")} {ex.Message}"); }
@@ -129,20 +140,73 @@ namespace RemotableObjects
             return tcpEndPoints.Any(p => p.Port == port);
         }
 
+        public bool Connect()
+        {
+            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: try connect to server");
+
+            ConnectRequestMsg message =
+                new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest };
+
+            string response = this.Invoke<string>(message);
+
+            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: server response is '{response}'");
+
+            if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
+                throw new CommunicationException(response);
+
+            return true;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="outgoingMessage">Message</param>
+        /// <returns></returns>
+        public T Invoke<T>(object outgoingMessage)
+        {
+            object result = null;
+            AutoResetEvent stopWaitHandle = new AutoResetEvent(false);
+
+            Action<object> handleResult = (incomeData) =>
+            {
+                result = incomeData;
+
+                stopWaitHandle.Set();
+            };
+
+            this.Send(_handler.Pack(outgoingMessage), handleResult); //, handleMessage
+            stopWaitHandle.WaitOne();
+
+            return (T)result;
+        }
+
+        public void Invoke(object outgoingMessage)
+        {
+            this.Send(_handler.Pack(outgoingMessage));
+        }
+
         /// <summary>
         /// Send data to Listener
         /// </summary>
         /// <param name="package"></param>
-        public void Send(NetPackage package, Action<byte[]> handler, IPEndPoint endpoint = null)
+        public void Send(NetPackage package, Action<object> handleResult = null, IPEndPoint endpoint = null)
         {
-            
             if (package.Data.Length > 0)
-                _PackageQueue.Add(new SendUnit { Pakage = package, Handler = handler, Endpoint = (endpoint == null ? this._serverSettings.GetServerAddress() : endpoint) });
+                _PackageQueue.Add(new SendUnit { Pakage = package, Handler = handleResult, Endpoint = (endpoint == null ? this._serverSettings.GetServerAddress() : endpoint) });
         }
 
-        public void Disconnect()
+        public void Stop()
         {
             this.tokenSource.Cancel();
+        }
+
+        /// <summary>
+        /// Listener address (for Client events e.g.)
+        /// </summary>
+        /// <returns></returns>
+        public IPEndPoint GetCallbackAddress()
+        {
+            return (IPEndPoint)this._Listener.Server.LocalEndPoint;
         }
     }
 }

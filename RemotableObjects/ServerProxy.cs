@@ -1,57 +1,60 @@
 ﻿using RemotableInterfaces;
-using RemoteCommunication.RemotableProtocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
-using System.Text;
 
 namespace RemotableObjects
 {
     public class ServerProxy<TService> : IServerProxy
     {
+        public delegate void onEventRaised(string serviceUid, object someEvent, IPEndPoint callbackEndpoint);
+        public event onEventRaised OnEventRaised;
+
         public string Uid { get; private set; } = Guid.NewGuid().ToString();
-        private TService _Service;
+        public IPEndPoint _callbackEndpoint;
+        private TService _service;
 
         public bool isCreated
         {
-            get { return !String.IsNullOrWhiteSpace(this.Uid) && _Service != null; }
+            get { return !String.IsNullOrWhiteSpace(this.Uid) && _service != null; }
         }
 
-        public ServerProxy(TService service)
+        public ServerProxy(TService service, IPEndPoint callbackEndpoint)
         {
-            this._Service = service;
+            _service = service;
+            _callbackEndpoint = callbackEndpoint;
 
-            var eventInfoes = _Service.GetType().GetEvents();
+            var eventInfoes = _service.GetType().GetEvents();
 
             foreach (var eventInfo in eventInfoes)
             {
-
                 Type typeEventParam = eventInfo.EventHandlerType;
                 MethodInfo miHandler = typeof(ServerProxy<TService>).GetMethod("EventHandler");
 
-
                 Delegate d = Delegate.CreateDelegate(typeEventParam, this, miHandler);
-
+ 
                 MethodInfo addHandler = eventInfo.GetAddMethod();
                 Object[] addHandlerArgs = { d };
-                addHandler.Invoke(_Service, addHandlerArgs);
+                addHandler.Invoke(_service, addHandlerArgs);
             }
         }
 
         public void EventHandler(object sender, object someEvent)
         {
-            
+            if (this.OnEventRaised != null)
+                this.OnEventRaised(this.Uid, someEvent, this._callbackEndpoint);
         }
 
         public string GetUid()
         {
-            return this.Uid;
+            return this.Uid.Trim();
         }
 
         public object InvokeMethod(string methodName, List<MethodParameter> parameters)
         {
-            Type serviceType = this._Service.GetType();
+            Type serviceType = this._service.GetType();
             List<MethodInfo> compatibleMethods = serviceType.GetMethods().Where(m => String.Equals(m.Name, methodName) /*&& m.GetParameters().Length == parameters.Count*/).ToList();
 
             MethodInfo compatibleMethod = null;
@@ -89,7 +92,12 @@ namespace RemotableObjects
             if (compatibleMethod == null)
                 throw new CommunicationException($"Cannot find compatible method {methodName} in remote interface.");
 
-            return compatibleMethod.Invoke(this._Service, parameters.Select(x => x.Value).ToArray());
+            return compatibleMethod.Invoke(this._service, parameters.Select(x => x.Value).ToArray());
+        }
+
+        public void Dispose()
+        {
+            
         }
     }
 }

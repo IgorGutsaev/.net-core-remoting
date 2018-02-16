@@ -1,14 +1,12 @@
 ﻿using System;
 using RemotableInterfaces;
 using RemoteCommunication.RemotableProtocol;
-using System.Threading;
 using System.Net;
 using System.Diagnostics;
 using Google.Protobuf.Collections;
-using System.Linq;
 using System.IO;
 using ProtoBuf;
-using Google.Protobuf;
+using System.Collections.Generic;
 
 namespace RemotableObjects
 {
@@ -17,114 +15,85 @@ namespace RemotableObjects
     /// </summary>
     public class ClientProxy : IClientProxy
     {
+        public event EventHandler<ServiceEvent> OnEvent;
+
         private string _ServiceProxyToken;
         private INetChannel _channel;
         private INetHandler _handler;
 
         public ClientProxy(INetChannel channel, INetHandler handler)
         {
-            this._channel = channel;
-            this._handler = handler;
-            this._channel.Start(false); // У тебя один экземпляр канала из-за DI!!!!
-
-            this.Connect();
-        }
-
-        /// <summary>
-        /// Connect via channel to server
-        /// </summary>
-        private void Connect()
-        {
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: try connect to server");
-
-            ConnectRequestMsg message =
-                new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest };
-
-            string response = this.Invoke<string>(message);
-
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: server response is '{response}'");
-
-            if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
-                throw new CommunicationException(response);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="outgoingMessage">Message</param>
-        /// <returns></returns>
-        private T Invoke<T>(object outgoingMessage)
-        {
-            object result = null;
-            AutoResetEvent stopWaitHandle = new AutoResetEvent(false);
-
-            Action<byte[]> handleMessage = (incomingMessage) =>
-            {
-                if (outgoingMessage is QueryInterfaceMsg)
-                {
-                    var t = QueryInterfaceResponseMsg.Parser.ParseFrom(incomingMessage);
-                    result = t.InterfaceGuid;
-                }
-                else if (outgoingMessage is InvokeMethodMsg)
-                {
-                    var t = InvokeMethodResponseMsg.Parser.ParseFrom(incomingMessage);
-                    using (var stream = new MemoryStream(t.Result.ToByteArray()))
-                    {
-                        result = Serializer.Deserialize(typeof(T), stream);
-                    }
-                }
-                else if (outgoingMessage is ConnectRequestMsg)
-                {
-                    var t = ConnectResponseMsg.Parser.ParseFrom(incomingMessage);
-                    result = t.Message;
-                }
-                else throw new CommunicationException("Client: Unknown message received!");
-
-                stopWaitHandle.Set();
-            };
-
-            this._channel.Send(this._handler.Pack(outgoingMessage), handleMessage);
-            stopWaitHandle.WaitOne();
-
-            return (T)result;
+            _channel = channel;
+            _handler = handler;
+            _channel.Start();
+            _channel.Connect();
+            _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };
         }
 
         public void BuildRemoteService(string interfaceName)
         {
             Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: ask the server to build '{interfaceName}' proxied service");
 
+            IPEndPoint myEndpoint = _channel.GetCallbackAddress();
             QueryInterfaceMsg message =
                 new QueryInterfaceMsg
                 {
                     Type = RemotingCommands.QueryInterface,
-                    InterfaceName = interfaceName
+                    InterfaceName = interfaceName,
+                    CallbackAddress = myEndpoint.Address.ToString(),
+                    CallbackPort = (uint)myEndpoint.Port
                 };
 
-            string serviceUid = this.Invoke<string>(message).ToString();
+            string serviceUid = _channel.Invoke<string>(message);
+
             if (String.IsNullOrWhiteSpace(serviceUid))
                 throw new CommunicationException("Server cannot create a proxy!");
 
             this._ServiceProxyToken = serviceUid;
         }
 
-        public T InvokeMethod<T>(string methodName, MethodParameterMsg[] parameters)
+        public T InvokeMethod<T>(string methodName, MethodParameter[] parameters)
         {
             Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: invoke method '{methodName}' in proxied service");
 
             RepeatedField<MethodParameterMsg> repeatableParamsContainer =
                 new RepeatedField<MethodParameterMsg>();
-            repeatableParamsContainer.AddRange(parameters);
- 
+
+            List<MethodParameterMsg> msgParameters = new List<MethodParameterMsg>();
+
+            foreach (var p in parameters)
+            {
+                using (var stream = new MemoryStream())
+                {
+                    Serializer.Serialize(stream, p.Value);
+                    stream.Position = 0;
+
+                    MethodParameterMsg param = new MethodParameterMsg() { Name = p.Name, Type = (p.Type.IsGenericType ? p.Type.FullName : p.Type.AssemblyQualifiedName), Value = Google.Protobuf.ByteString.FromStream(stream) };
+                    msgParameters.Add(param);
+                }
+            }
+
+            repeatableParamsContainer.AddRange(msgParameters);
+
             InvokeMethodMsg message =
                 new InvokeMethodMsg
                 {
                     Type = RemotingCommands.InvokeMethod,
                     InterfaceGuid = this._ServiceProxyToken,
                     Method = methodName,
-                     Parameters = { repeatableParamsContainer }
+                    Parameters = { repeatableParamsContainer }
                 };
 
-            return this.Invoke<T>(message);
+            return this._channel.Invoke<T>(message);
+        }
+
+        public void Dispose()
+        {
+            _channel.Invoke(new ReleaseInterfaceMsg
+            {
+                Type = RemotingCommands.ReleaseInterface,
+                InterfaceUid = _ServiceProxyToken
+            });
         }
     }
 }

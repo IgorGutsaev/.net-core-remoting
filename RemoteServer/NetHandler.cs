@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-using System.Net;
 using System;
 using RemoteCommunication.RemotableProtocol;
 using System.Diagnostics;
@@ -10,122 +8,111 @@ using RemotableObjects;
 using System.Collections.Generic;
 using System.Linq;
 using ProtoBuf;
+using System.Net;
 
 namespace RemotableServer
 {
-    /// <summary>
-    /// Stream processing
-    /// </summary>
     public class NetHandler : INetHandler
     {
-        public event onMessageRaised OnMessageRaised;
+        private IBroker _broker;
 
-        /// <summary>
-        /// Process 
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="clientendPoint"></param>
-        /// <param name="responseAction"></param>
-        public void Process(Stream stream, Action<NetPackage> responseAction)
+        public event onEventRaised OnEventRaised;
+
+        public NetHandler(IBroker broker)
         {
-            byte[] totalLenBuff = new byte[4];
-            stream.Read(totalLenBuff, 0, totalLenBuff.Length);
-            int totalLength = BitConverter.ToInt32(totalLenBuff, 0);
+            this._broker = broker;
+            this._broker.OnEventRaised += (ev, endpoint) => { this.OnEventRaised?.Invoke(ev, endpoint); };
+        }
 
-            var buffer = new byte[totalLength];
-            stream.Read(buffer, 0, buffer.Length);
-
-            IMessage responseMessage = null;
-
+        public NetPackage ProcessRequest(Stream stream, Action<object> handleResult)
+        {
+            Func<IMessage, NetPackage> Prepared = (message) => { return this.Pack(message); };
             try
             {
-                using (MemoryStream incomeMs = new MemoryStream(buffer))
+                IMessage income = ProtobufMessageParser.GetMessage(stream);
+
+                if (income is ConnectRequestMsg)
+                    return Prepared(new ConnectResponseMsg { Type = RemotingCommands.ConnectionResponse, Message = "+ok" });
+                if (income is ConnectResponseMsg)
+                    handleResult(((ConnectResponseMsg)income).Message);
+                else if (income is QueryInterfaceMsg)
                 {
-                    byte[] messageTypeHeader = new byte[4]; // to indentify the object
-                    incomeMs.Read(messageTypeHeader, 0, 4);
+                    QueryInterfaceMsg response = (QueryInterfaceMsg)income;
 
-                    int objectType = BitConverter.ToInt16(messageTypeHeader, 0);
+                    string serviceGuid = _broker.CreateService(response.InterfaceName, new IPEndPoint(IPAddress.Parse(response.CallbackAddress), (int)response.CallbackPort));
+                    return Prepared(new QueryInterfaceResponseMsg { Type = RemotingCommands.QueryInterfaceResponse, InterfaceGuid = serviceGuid });
+                }
+                else if (income is QueryInterfaceResponseMsg)
+                {
+                    string serviceGuid = ((QueryInterfaceResponseMsg)income).InterfaceGuid;
+                    handleResult(serviceGuid);
+                }
+                else if (income is InvokeMethodMsg)
+                {
+                    InvokeMethodMsg message = (InvokeMethodMsg)income;
 
-                    RemotingCommands messageType = (RemotingCommands)objectType;
-                    Debug.WriteLine($"Received a message {messageType}");
+                    #region Deserialize parameters
+                    List<MethodParameter> deserializedParameters = new List<MethodParameter>();
 
-                    switch (messageType)
+                    MethodParameterMsg[] serializedParameters = message.Parameters.ToArray();
+                    foreach (var p in serializedParameters)
                     {
-                        case RemotingCommands.Unknown:
-                            break;
-                        case RemotingCommands.ConnectionRequest:
-                            ConnectRequestMsg reqMsg = ConnectRequestMsg.Parser.ParseFrom(incomeMs);
-                            responseMessage = new ConnectResponseMsg { Message = "+ok", Type = RemotingCommands.ConnectionResponse };
-                            break;
-                        case RemotingCommands.ConnectionResponse:
-                            ConnectResponseMsg respMsg = ConnectResponseMsg.Parser.ParseFrom(incomeMs);
-                            break;
-                        case RemotingCommands.QueryInterface:
-                            QueryInterfaceMsg interfaceMsg = QueryInterfaceMsg.Parser.ParseFrom(incomeMs);
-                           //// responseMessage = this.CreateRemoteService(interfaceMsg.InterfaceName);
-                            break;
-                        case RemotingCommands.QueryInterfaceResponse:
-                            QueryInterfaceResponseMsg interfaceRespMsg = QueryInterfaceResponseMsg.Parser.ParseFrom(incomeMs);
-                            break;
-                        case RemotingCommands.InvokeMethod:
-                            {
-                                InvokeMethodMsg invokeMethodMsg = InvokeMethodMsg.Parser.ParseFrom(incomeMs);
-                                /*
-                                var service = this.FirstOrDefault(x => x.GetUid() == invokeMessage.InterfaceGuid);
-                                if (service == null)
-                                    throw new CommunicationException($"Service {invokeMessage.InterfaceGuid} not found!");
+                        using (var ms = new MemoryStream(p.Value.ToByteArray()))
+                        {
+                            Type parType = Type.GetType(p.Type);
+                            object variable = Serializer.Deserialize(parType, ms);
+                            MethodParameter prm = new MethodParameter(p.Name, parType, variable);
+                            deserializedParameters.Add(prm);
+                        }
+                    }
+                    #endregion
 
-                                #region Deserialize parameters // Move to helper
-                                List<MethodParameter> deserializedParameters = new List<MethodParameter>();
+                    object result = _broker.InvokeMethod(message.InterfaceGuid, message.Method, deserializedParameters);
 
-                                MethodParameterMsg[] serializedParameters = invokeMessage.Parameters.ToArray();
-                                foreach (var p in serializedParameters)
-                                {
-                                    using (var ms = new MemoryStream(p.Value.ToByteArray()))
-                                    {
-                                        Type parType = Type.GetType(p.Type);
-                                        object variable = Serializer.Deserialize(parType, ms);
-                                        MethodParameter prm = new MethodParameter(p.Name, parType, variable);
-                                        deserializedParameters.Add(prm);
-                                    }
-                                }
-                                #endregion
-
-                                object result = service.InvokeMethod(invokeMessage.Method, deserializedParameters);
-
-                                using (var ms = new MemoryStream())
-                                {
-                                    Serializer.Serialize(ms, result);
-                                    responseMessage = new InvokeMethodResponseMsg { Type = RemotingCommands.InvokeMethodResponse, Result = ByteString.CopyFrom(ms.ToArray()) };
-                                }
-                                */
-                                break;
-                            }
-                        case RemotingCommands.InvokeMethodResponse:
-                            InvokeMethodResponseMsg invokeMethodRespMsg = InvokeMethodResponseMsg.Parser.ParseFrom(incomeMs);
-                            break;
-                        case RemotingCommands.Exception:
-                            RemotingExceptionMsg msg = RemotingExceptionMsg.Parser.ParseFrom(incomeMs);
-                            throw new Exception(msg.Message);
-                        default:
-                            Debug.WriteLine("Fatal error.");
-                            throw new CommunicationException("Unknown messageType");
+                    using (var ms = new MemoryStream())
+                    {
+                        Serializer.Serialize(ms, result);
+                        return Prepared(new InvokeMethodResponseMsg { Type = RemotingCommands.InvokeMethodResponse, Result = ByteString.CopyFrom(ms.ToArray()), ResultType = result.GetType().AssemblyQualifiedName });
                     }
                 }
+                else if (income is InvokeMethodResponseMsg)
+                {
+                    InvokeMethodResponseMsg response = (InvokeMethodResponseMsg)income;
+
+                    using (var ms = new MemoryStream(response.Result.ToByteArray()))
+                    {
+                        object result = Serializer.Deserialize(Type.GetType(response.ResultType), ms);
+                        handleResult(result);
+                    }
+                }
+                else if (income is TriggerEventMsg)
+                {
+                    TriggerEventMsg incomeEvent = (TriggerEventMsg)income;
+
+                    using (var ms = new MemoryStream(incomeEvent.Value.ToByteArray()))
+                    {
+                        object result = Serializer.Deserialize(Type.GetType(incomeEvent.EventType), ms);
+                        ServiceEvent ev = new ServiceEvent { ServiceUid = incomeEvent.ServiceUid, Data = result };
+                        handleResult(ev);
+                    }
+                }
+                else if (income is ReleaseInterfaceMsg)
+                {
+                    ReleaseInterfaceMsg releaseInterfaceMessage = (ReleaseInterfaceMsg)income;
+
+                    handleResult(releaseInterfaceMessage.InterfaceUid);
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
-                responseMessage = new RemotingExceptionMsg
+
+                return Prepared(new RemotingExceptionMsg
                 {
                     Message = ex.Message,
                     Type = RemotingCommands.Exception
-                };
-            }
-
-            if (responseMessage != null)
-            {
-                NetPackage package = this.Pack(responseMessage);
-                responseAction(package);
+                });
             }
         }
 

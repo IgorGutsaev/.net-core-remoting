@@ -6,9 +6,9 @@ using System.Text;
 
 namespace RemotableInterfaces
 {
-    public interface IServerProxy
+    public interface IServerProxy: IDisposable
     {
-        string GetUid();
+        string Uid { get; }
         object InvokeMethod(string methodName, List<MethodParameter> parameters);
     }
 }
