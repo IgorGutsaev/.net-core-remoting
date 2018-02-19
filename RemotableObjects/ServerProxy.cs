@@ -64,16 +64,15 @@ namespace RemotableObjects
                     continue;
 
                 // params mismatch by name and type
-                if (methodParams.Any(x => !parameters.Any(p => p.Name == x.Name && p.Type == x.ParameterType)) ||
-                    parameters.Any(x => !methodParams.Any(p => p.Name == x.Name && p.ParameterType == x.Type)))
+                if (methodParams.Any(x => !parameters.Any(p => p.Type == x.ParameterType)) ||
+                    parameters.Any(x => !methodParams.Any(p => p.ParameterType == x.Type)))
                     continue;
 
                 // check mismatch by params order
                 bool failOrder = false;
                 for (int i = 0; i < methodParams.Length; i++)
                 {
-                    if (!String.Equals(methodParams[i].Name, parameters[i].Name, StringComparison.InvariantCultureIgnoreCase)
-                        || !Type.Equals(methodParams[i].ParameterType, parameters[i].Type))
+                    if (!Type.Equals(methodParams[i].ParameterType, parameters[i].Type))
                     { failOrder = true; break; }
                 }
 

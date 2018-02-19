@@ -8,15 +8,15 @@ namespace RemotableServer
     {
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddSingleton<INetServerSettings, NetServerSettings>()
-                .AddTransient<INetChannel, TcpNetChannel>()
+            return serviceCollection.AddTransient<INetChannel, TcpNetChannel>()
                 .AddSingleton<INetHandler, NetHandler>()
                 .AddScoped<IBroker, Broker>();
         }
 
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddSingleton<RemotingServer>();
+            return serviceCollection.AddSingleton<RemotingServer>(sp => {
+                return new RemotingServer(new NetServerSettings(), sp.GetRequiredService<INetChannel>()); });
         }
     }
 }

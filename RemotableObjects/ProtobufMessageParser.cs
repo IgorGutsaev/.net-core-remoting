@@ -31,7 +31,6 @@ namespace RemotableObjects
                 int objectType = BitConverter.ToInt16(messageTypeHeader, 0);
 
                 RemotingCommands messageType = (RemotingCommands)objectType;
-                Debug.WriteLine($"Received a message '{messageType}'");
 
                 switch (messageType)
                 {

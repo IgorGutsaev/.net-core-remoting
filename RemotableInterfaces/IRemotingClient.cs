@@ -1,6 +1,4 @@
-﻿using RemoteCommunication.RemotableProtocol;
-using System;
-using System.Net;
+﻿using System;
 
 namespace RemotableInterfaces
 {
@@ -8,7 +6,7 @@ namespace RemotableInterfaces
     {
         event EventHandler<ServiceEvent> OnEvent;
 
-        object InvokeMethod(string methodName, MethodParameter[] parameters);
-        void BuildRemoteService(Type interfaceType);
+        object InvokeMethod(string serviceUid, string methodName, MethodParameter[] parameters);
+        string BuildRemoteService(Type interfaceType);
     }
 }

@@ -32,19 +32,22 @@ namespace RemotableObjects
 
         #region Variables
         private CancellationTokenSource tokenSource = new CancellationTokenSource();
+        private CancellationToken ct;
+
         private BlockingCollection<SendUnit> _PackageQueue = new BlockingCollection<SendUnit>(); // message queue 
 
         private INetServerSettings _serverSettings;
         private INetHandler _handler;
         private TcpListener _Listener;
         private NetworkStream _NetworkStream = null;
+        public string Id { get; private set; } = Guid.NewGuid().ToString();
         #endregion
 
-        public TcpNetChannel(INetServerSettings serverSettings, INetHandler handler)
+        public TcpNetChannel(INetHandler handler)
         {
-            this._serverSettings = serverSettings;
             this._handler = handler;
             this._handler.OnEventRaised += _handler_OnMessageRaised;
+            this.ct = tokenSource.Token;
         }
 
         private void _handler_OnMessageRaised(ServiceEvent ev, IPEndPoint endpoint)
@@ -62,11 +65,13 @@ namespace RemotableObjects
             }
         }
 
-        public void Start()
+        public void Start(INetServerSettings serverSettings)
         {
+            this._serverSettings = serverSettings;
             IPEndPoint endpoint = this._serverSettings.GetServerAddress();
-
-            _Listener = new TcpListener(endpoint.Address, !this.PortInUse(endpoint.Port) ? endpoint.Port : new Random().Next(65000, 65431));
+            
+            _Listener = new TcpListener(endpoint.Address, endpoint.Port);
+            this.ct.Register(_Listener.Stop);
             _Listener.Start();
 
             Thread.Sleep(100);
@@ -77,31 +82,29 @@ namespace RemotableObjects
             {
                 try
                 {
-                    while (!this.tokenSource.IsCancellationRequested)
+                    while (!ct.IsCancellationRequested)
                     {
                         using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
                         {
-                            this.Report($"Port {((IPEndPoint)_Listener.LocalEndpoint).Port}: request from {tcpClient.Client.RemoteEndPoint}");
-
                             using (_NetworkStream = tcpClient.GetStream())
                             {
-                                NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(null, (ServiceEvent)ev); });
+                                NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
                                 if (response != null)
                                     _NetworkStream.Write(response.Data, 0, response.Data.Length);
                             }
                         }
                     }
                 }
+                catch (SocketException e) when (e.SocketErrorCode == SocketError.Interrupted)
+                {
+                   // throw new OperationCanceledExeption();
+                }
                 catch (Exception ex)
                 {
                     this.Report(ex.Message);
                 }
-                finally
-                {
-                    if (_Listener != null)
-                        _Listener.Stop();
-                }
-            }, tokenSource.Token);
+            }, ct);
+
 
             Task send = Task.Run(() =>
             {
@@ -113,6 +116,7 @@ namespace RemotableObjects
 
                     using (TcpClient sClient = new TcpClient())
                     {
+                        //sClient.ReceiveTimeout
                         sClient.Connect(unit.Endpoint);
                         using (NetworkStream stream = sClient.GetStream())
                         {
@@ -123,7 +127,7 @@ namespace RemotableObjects
                         }
                     }
                 }
-            }, tokenSource.Token);
+            }, ct);
         }
 
         public bool PortInUse(int port)
@@ -153,7 +157,7 @@ namespace RemotableObjects
         /// </summary>
         /// <param name="outgoingMessage">Message</param>
         /// <returns></returns>
-        public object Invoke(object outgoingMessage)
+        public object Invoke(object outgoingMessage, IPEndPoint endpoint = null)
         {
             object result = null;
             AutoResetEvent stopWaitHandle = new AutoResetEvent(false);
@@ -164,7 +168,7 @@ namespace RemotableObjects
                 stopWaitHandle.Set();
             };
 
-            this.Send(_handler.Pack(outgoingMessage), handleResult); //, handleMessage
+            this.Send(_handler.Pack(outgoingMessage), handleResult, endpoint); //, handleMessage
 
             stopWaitHandle.WaitOne();
 
@@ -187,6 +191,9 @@ namespace RemotableObjects
         public void Stop()
         {
             this.tokenSource.Cancel();
+
+            if (_Listener != null)
+                _Listener.Stop();
         }
 
         /// <summary>
@@ -200,7 +207,7 @@ namespace RemotableObjects
 
         private void Report(string message)
         { 
-            this.OnChannelReport?.Invoke(this, message);
+            this.OnChannelReport?.Invoke(this, $"{message} [{this.Id}]");
         }
     }
 }

@@ -13,13 +13,14 @@ namespace RemotableClient
         /// Proxy object through which the interaction takes place
         /// </summary>
         private IRemotingClient _clientProxy;
+        private string _serviceUid = "";
 
         private void SetProxy(IRemotingClient clientProxy)
         {
             _clientProxy = clientProxy;
             
             // build remote interface
-            _clientProxy.BuildRemoteService(_decorated.GetType().GetInterfaces().FirstOrDefault());// build target interface
+            _serviceUid = _clientProxy.BuildRemoteService(_decorated.GetType().GetInterfaces().FirstOrDefault());// build target interface
             _clientProxy.OnEvent += _proxy_OnEvent;
         }
 
@@ -62,7 +63,7 @@ namespace RemotableClient
                 if (targetMethod.Name.StartsWith("add_"))
                     result = targetMethod.Invoke(_decorated, args); // Original invoke
                 else
-                    result = this._clientProxy.InvokeMethod(targetMethod.Name, PrepareParameters(targetMethod, args)); // Invocation via proxy object
+                    result = this._clientProxy.InvokeMethod(this._serviceUid, targetMethod.Name, PrepareParameters(targetMethod, args)); // Invocation via proxy object
 
                 LogAfter(targetMethod, args, result);
                 return result;

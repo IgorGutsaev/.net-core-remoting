@@ -1,24 +1,23 @@
 ﻿using RemotableInterfaces;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace RemotableServer
 {
     public class RemotingServer : IRemotingServer
     {
         private INetChannel _channel;
+        private INetServerSettings _settings;
 
-        public RemotingServer(INetChannel channel)
+        public RemotingServer(INetServerSettings settings, INetChannel channel)
         {
             _channel = channel;
+            _settings = settings;
             _channel.OnChannelReport += (sender, message) => { Debug.WriteLine("Server: " + message); };
         }
 
         public void Start()
         {
-            _channel.Start();
+            _channel.Start(_settings);
         }
 
         public void Stop()

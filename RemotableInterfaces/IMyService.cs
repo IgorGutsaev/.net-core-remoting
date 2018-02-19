@@ -8,7 +8,7 @@ namespace RemotableInterfaces
 
         Unit Do(int valueInt, string valueString, Unit someA);
 
-        int Do(string valueString, int valueInt, Unit someA);
+        int Do(string valueString, int valueInt, Unit someB);
 
         void CheckUnitNotNull(Unit someUnit);
     }

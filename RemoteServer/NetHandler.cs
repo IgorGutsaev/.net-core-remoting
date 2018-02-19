@@ -28,12 +28,13 @@ namespace RemotableServer
         {
             Func<IMessage, NetPackage> Prepared = (message) => { return this.Pack(message); };
 
-            // throws setrver-side exceptions
             IMessage income = null;
 
             try
-            {
-                income = ProtobufMessageParser.GetMessage(stream);
+            { 
+                income = ProtobufMessageParser.GetMessage(stream); // throws server-side exceptions
+                if (income != null)
+                    Debug.WriteLine($"NetHandler: '{income.GetType().Name}' received");
             }
             catch (Exception ex) {
                 handleResult(ex); }

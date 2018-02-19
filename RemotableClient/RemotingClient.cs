@@ -7,6 +7,7 @@ using Google.Protobuf.Collections;
 using System.IO;
 using ProtoBuf;
 using System.Collections.Generic;
+using RemotableClient;
 
 namespace RemotableObjects
 {
@@ -17,23 +18,31 @@ namespace RemotableObjects
     {
         public event EventHandler<ServiceEvent> OnEvent;
 
-        private string _ServiceProxyToken;
         private INetChannel _channel;
         private INetHandler _handler;
+        private RemotingClientSetup _setup;
 
-        public RemotingClient(INetChannel channel, INetHandler handler)
+        //internal Dictionary<Type, string> _serviceCollection = new Dictionary<Type, string>(); // Singleton mode
+        //public IDictionary<Type, string> ServiceCollection => _serviceCollection;
+
+        internal Dictionary<string, Type> _serviceCollection = new Dictionary<string, Type>();
+        public IDictionary<string, Type> ServiceCollection => _serviceCollection;
+
+        public RemotingClient(INetServerSettings settings, INetChannel channel, INetHandler handler, RemotingClientSetup setup)
         {
             _channel = channel;
             _handler = handler;
+            this._setup = setup;
 
-            _channel.Start();
+            _channel.OnChannelReport += (sender, message) => { Debug.WriteLine($"Client: " + message); };
+            _channel.Start(settings);
             _channel.Connect();
             _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };
         }
 
-        public void BuildRemoteService(Type interfaceType)
+        public string BuildRemoteService(Type interfaceType)
         {
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: ask the server to build '{interfaceType.FullName}' proxied service");
+            Debug.WriteLine($"Client: ask the server to build '{interfaceType.FullName}' proxied service");
 
             IPEndPoint myEndpoint = _channel.GetCallbackAddress();
             QueryInterfaceMsg message =
@@ -45,17 +54,21 @@ namespace RemotableObjects
                     CallbackPort = (uint)myEndpoint.Port
                 };
 
-            string serviceUid = _channel.Invoke(message).ToString();
+            IPEndPoint endpoint = this._setup.GetBinding(interfaceType).ToIPEndPoint();
+
+            string serviceUid = _channel.Invoke(message, endpoint).ToString();
 
             if (String.IsNullOrWhiteSpace(serviceUid))
                 throw new CommunicationException($"An error occurred while service {interfaceType.Name} initiating!");
 
-            this._ServiceProxyToken = serviceUid;
+            this.ServiceCollection.Add(serviceUid, interfaceType);
+
+            return serviceUid;
         }
 
-        public object InvokeMethod(string methodName, MethodParameter[] parameters)
+        public object InvokeMethod(string serviceUid, string methodName, MethodParameter[] parameters)
         {
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: invoke method '{methodName}' in proxied service");
+            Debug.WriteLine($"Client: invoke method '{methodName}' in proxied service");
 
             RepeatedField<MethodParameterMsg> repeatableParamsContainer =
                 new RepeatedField<MethodParameterMsg>();
@@ -80,7 +93,7 @@ namespace RemotableObjects
                 new InvokeMethodMsg
                 {
                     Type = RemotingCommands.InvokeMethod,
-                    InterfaceGuid = this._ServiceProxyToken,
+                    InterfaceGuid = serviceUid,
                     Method = methodName,
                     Parameters = { repeatableParamsContainer }
                 };
@@ -90,11 +103,14 @@ namespace RemotableObjects
 
         public void Dispose()
         {
-            _channel.Invoke(new ReleaseInterfaceMsg
+            foreach (var service in ServiceCollection)
             {
-                Type = RemotingCommands.ReleaseInterface,
-                InterfaceUid = _ServiceProxyToken
-            });
+                _channel.Invoke(new ReleaseInterfaceMsg
+                {
+                    Type = RemotingCommands.ReleaseInterface,
+                    InterfaceUid = service.Key
+                });
+            }
         }
     }
 }
