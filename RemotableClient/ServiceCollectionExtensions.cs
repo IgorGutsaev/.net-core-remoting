@@ -8,7 +8,8 @@ namespace RemotableClient
     {
         public static IServiceCollection AddRemotingClient(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddTransient<IMyService>(sp => { return RemoteDecorator<IMyService>.Create(new MyService(), sp.GetRequiredService<IClientProxy>()); });
+            return serviceCollection.AddTransient<IRemotingClient, RemotingClient>()
+                .AddTransient<IMyService>(sp => { return RemoteDecorator<IMyService>.Create(new MyService(), sp.GetRequiredService<IRemotingClient>()); });
         }
     }
 }

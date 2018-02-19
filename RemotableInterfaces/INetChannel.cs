@@ -6,6 +6,7 @@ namespace RemotableInterfaces
 {
     public interface INetChannel
     {
+        event EventHandler<string> OnChannelReport;
         event EventHandler<ServiceEvent> OnEvent;
 
         void Start();

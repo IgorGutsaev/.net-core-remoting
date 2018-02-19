@@ -3,8 +3,6 @@ using RemoteCommunication.RemotableProtocol;
 using System.Diagnostics;
 using System.IO;
 using Google.Protobuf;
-using RemotableInterfaces;
-using RemotableObjects;
 
 namespace RemotableObjects
 {
@@ -33,7 +31,7 @@ namespace RemotableObjects
                 int objectType = BitConverter.ToInt16(messageTypeHeader, 0);
 
                 RemotingCommands messageType = (RemotingCommands)objectType;
-                Debug.WriteLine($"Received a message {messageType}");
+                Debug.WriteLine($"Received a message '{messageType}'");
 
                 switch (messageType)
                 {

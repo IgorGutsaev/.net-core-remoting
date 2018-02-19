@@ -87,7 +87,16 @@ namespace RemotableObjects
             if (compatibleMethod == null)
                 throw new CommunicationException($"Cannot find compatible method {methodName} in remote interface.");
 
-            return compatibleMethod.Invoke(this._service, parameters.Select(x => x.Value).ToArray());
+            try
+            {
+                return compatibleMethod.Invoke(this._service, parameters.Select(x => x.Value).ToArray());
+            }
+            catch (Exception ex)
+            {
+                if (ex.InnerException != null)
+                    throw ex.InnerException;
+                else throw ex;
+            }
         }
 
         public void Dispose()

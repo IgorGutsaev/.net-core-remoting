@@ -20,6 +20,7 @@ namespace RemotableObjects
     /// </summary>
     public class TcpNetChannel : INetChannel
     {
+        public event EventHandler<string> OnChannelReport;
         public event EventHandler<ServiceEvent> OnEvent;
 
         public class SendUnit
@@ -70,7 +71,7 @@ namespace RemotableObjects
 
             Thread.Sleep(100);
 
-            Debug.WriteLine($"Listening {_Listener.LocalEndpoint}");
+            this.Report($"Listening {_Listener.LocalEndpoint}");
 
             Task receive = Task.Run(() =>
             {
@@ -80,7 +81,7 @@ namespace RemotableObjects
                     {
                         using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
                         {
-                            Debug.WriteLine($"{DateTime.Now.ToString("T")} Server: request from {tcpClient.Client.RemoteEndPoint}");
+                            this.Report($"Port {((IPEndPoint)_Listener.LocalEndpoint).Port}: request from {tcpClient.Client.RemoteEndPoint}");
 
                             using (_NetworkStream = tcpClient.GetStream())
                             {
@@ -93,7 +94,7 @@ namespace RemotableObjects
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(ex.Message);
+                    this.Report(ex.Message);
                 }
                 finally
                 {
@@ -106,26 +107,21 @@ namespace RemotableObjects
             {
                 while (!this.tokenSource.IsCancellationRequested)
                 {
-                    try
+                    SendUnit unit = _PackageQueue.Take();
+                    if (unit == null)
+                        break;
+
+                    using (TcpClient sClient = new TcpClient())
                     {
-                        SendUnit unit = _PackageQueue.Take();
-                        if (unit == null)
-                            break;
-
-                        using (TcpClient sClient = new TcpClient())
+                        sClient.Connect(unit.Endpoint);
+                        using (NetworkStream stream = sClient.GetStream())
                         {
-                            sClient.Connect(unit.Endpoint);
-                            using (NetworkStream stream = sClient.GetStream())
-                            {
-                                stream.Write(unit.Pakage.Data, 0, unit.Pakage.Data.Length);
-                                stream.ReadTimeout = 100 * 1000; // 100 sec
+                            stream.Write(unit.Pakage.Data, 0, unit.Pakage.Data.Length);
+                            stream.ReadTimeout = 100 * 1000; // 100 sec
 
-                                _handler.ProcessRequest(stream, unit.Handler);//, unit.Handler);
-                            }
+                            _handler.ProcessRequest(stream, unit.Handler);//, unit.Handler);
                         }
                     }
-                    catch (Exception ex) { Trace.WriteLine($"{DateTime.Now.ToString("T")} {ex.Message}"); }
-                    //  finally { this._TcpClient.Close(); }
                 }
             }, tokenSource.Token);
         }
@@ -140,14 +136,11 @@ namespace RemotableObjects
 
         public bool Connect()
         {
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: try connect to server");
+            this.Report($"Try connect to server");
 
-            ConnectRequestMsg message =
-                new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest };
+            string response = this.Invoke(new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest }).ToString();
 
-            string response = this.Invoke(message).ToString();
-
-            Debug.WriteLine($"{DateTime.Now.ToString("T")} Client: server response is '{response}'");
+            this.Report($"Server answer: '{response}'");
 
             if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
                 throw new CommunicationException(response);
@@ -168,12 +161,15 @@ namespace RemotableObjects
             Action<object> handleResult = (incomeData) =>
             {
                 result = incomeData;
-
                 stopWaitHandle.Set();
             };
 
             this.Send(_handler.Pack(outgoingMessage), handleResult); //, handleMessage
+
             stopWaitHandle.WaitOne();
+
+            if (result is Exception)
+                throw (Exception)result;
 
             return result;
         }
@@ -200,6 +196,11 @@ namespace RemotableObjects
         public IPEndPoint GetCallbackAddress()
         {
             return (IPEndPoint)this._Listener.Server.LocalEndPoint;
+        }
+
+        private void Report(string message)
+        { 
+            this.OnChannelReport?.Invoke(this, message);
         }
     }
 }

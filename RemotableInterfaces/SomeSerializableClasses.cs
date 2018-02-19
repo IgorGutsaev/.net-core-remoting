@@ -6,16 +6,21 @@ using System.Text;
 namespace RemotableInterfaces
 {
     [ProtoContract(SkipConstructor = true, ImplicitFields = ImplicitFields.AllPublic)]
-    public class SomeClassB
+    public class Part
     {
         [ProtoMember(1)]
         public string Uid { get; set; } = "Uid-1";
         [ProtoMember(2)]
         public int Value { get; set; } = 1;
+
+        public override string ToString()
+        {
+            return $"{this.Uid}: {this.Value}";
+        }
     }
 
     [ProtoContract(SkipConstructor = true, ImplicitFields = ImplicitFields.AllPublic)]
-    public class SomeClassA
+    public class Unit
     {
         [ProtoMember(1)]
         public string Uid { get; set; } = "Uid-1";
@@ -25,11 +30,16 @@ namespace RemotableInterfaces
         public DateTime Date { get; set; } = DateTime.Now;
 
         [ProtoMember(4)]
-        public SomeClassB Child { get; set; }
+        public Part Child { get; set; }
 
-        public SomeClassA()
+        public Unit()
         {
-            this.Child = new SomeClassB { Uid = "Uid-2", Value = 2 };
+            this.Child = new Part { Uid = "Uid-2", Value = 2 };
+        }
+
+        public override string ToString()
+        {
+            return $"{this.Uid}: {this.Value}/{this.Date.ToString("G")}. [{this.Child}]";
         }
     }
 }

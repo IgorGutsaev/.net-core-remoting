@@ -11,8 +11,7 @@ namespace RemotableServer
             return serviceCollection.AddSingleton<INetServerSettings, NetServerSettings>()
                 .AddTransient<INetChannel, TcpNetChannel>()
                 .AddSingleton<INetHandler, NetHandler>()
-                .AddScoped<IBroker, Broker>()
-                .AddTransient<IClientProxy, ClientProxy>();
+                .AddScoped<IBroker, Broker>();
         }
 
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)

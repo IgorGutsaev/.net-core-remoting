@@ -9,35 +9,63 @@ using Xunit;
 
 namespace RemotableTests
 {
-    public class ExchangeTest
+    public class ExchangeTest : BaseExchangeTest
     {
-        [Fact]
-        public void Test_Communication()
+        public ExchangeTest()
+            :base()
         {
-            ServiceProvider provider = new ServiceCollection()
-                .AddRemoting()
-                .AddRemotingServer()
-                .AddRemotingClient()
-                .BuildServiceProvider();
-
-            RemotingServer server = provider.GetRequiredService<RemotingServer>();
-            IMyService service = provider.GetRequiredService<IMyService>();
-            service.OnSomeBDetect += Service_OnSomeBDetect;
-
-            var result = service.Do(1, "lol", new SomeClassA { Date = DateTime.Now, Uid = "Uid-1", Value = 3,  Child = new SomeClassB { Value = 23, Uid = "Uid-2" } });
-
-            Console.ReadLine();
-        }
-
-        private void Service_OnSomeBDetect(object sender, SomeClassB e)
-        {
-            Debug.WriteLine(e.GetType().ToString() + " detected!");
+                
         }
 
         [Fact]
-        public void Test_Server_Creted()
+        public void Server_Constructor_Creted()
         {
+            // Prepare
+            RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
 
+            // Pre-validate
+
+
+            // Perform
+            server.Start();
+
+            // Post-validate
+
+        }
+
+        [Theory]
+        [MemberData(nameof(TestDataGenerator.GetUnitFromDataGenerator), MemberType = typeof(TestDataGenerator))]
+        public void Test_Intercept_Event(Unit a1, Unit a2, Unit a3)
+        {
+            EventHandler<Part> onDetect = (sender, e) => {
+                Debug.WriteLine($"{e.GetType().ToString()}  detected: {e}");
+                Assert.NotNull(e);
+            };
+
+            RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
+            IMyService service = this._Provider.GetRequiredService<IMyService>();
+            service.OnSomeBDetect += onDetect;
+
+            Assert.NotNull(service.Do(1, "hi there", a1));
+            Assert.NotNull(service.Do(2, "hi there", a2));
+            Assert.NotNull(service.Do(3, "hi there", a3));
+        }
+
+        [Fact]
+        public void Test_Exception()
+        {
+            // Prepare
+            RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
+            IMyService service = this._Provider.GetRequiredService<IMyService>();
+
+            // Pre-validate
+            Assert.True(server != null && service != null);
+
+            // Perform
+            Exception ex = Assert.Throws<Exception>(() => { service.CheckUnitNotNull(null); });
+
+            // Post-validate
+            Assert.Equal("Value cannot be null.\r\nParameter name: Argument must declared!", ex.Message);
         }
     }
 }

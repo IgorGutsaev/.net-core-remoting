@@ -13,7 +13,7 @@ namespace RemotableObjects
     /// <summary>
     /// 
     /// </summary>
-    public class ClientProxy : IClientProxy
+    public class RemotingClient : IRemotingClient
     {
         public event EventHandler<ServiceEvent> OnEvent;
 
@@ -21,10 +21,11 @@ namespace RemotableObjects
         private INetChannel _channel;
         private INetHandler _handler;
 
-        public ClientProxy(INetChannel channel, INetHandler handler)
+        public RemotingClient(INetChannel channel, INetHandler handler)
         {
             _channel = channel;
             _handler = handler;
+
             _channel.Start();
             _channel.Connect();
             _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };

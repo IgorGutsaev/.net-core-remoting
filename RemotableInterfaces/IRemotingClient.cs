@@ -4,7 +4,7 @@ using System.Net;
 
 namespace RemotableInterfaces
 {
-    public interface IClientProxy : IDisposable
+    public interface IRemotingClient : IDisposable
     {
         event EventHandler<ServiceEvent> OnEvent;
 

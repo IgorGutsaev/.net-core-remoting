@@ -1,10 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using RemotableInterfaces;
+﻿using RemotableInterfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
 namespace RemotableClient
 {
@@ -14,9 +12,9 @@ namespace RemotableClient
         /// <summary>
         /// Proxy object through which the interaction takes place
         /// </summary>
-        private IClientProxy _clientProxy;
+        private IRemotingClient _clientProxy;
 
-        private void SetProxy(IClientProxy clientProxy)
+        private void SetProxy(IRemotingClient clientProxy)
         {
             _clientProxy = clientProxy;
             
@@ -47,11 +45,11 @@ namespace RemotableClient
             }
         }
 
-        public RemoteDecorator<T> InjectProxy(IClientProxy proxy)
-        {
-            this._clientProxy = proxy;
-            return this;
-        }
+        //public RemoteDecorator<T> InjectProxy(IClientProxy proxy)
+        //{
+        //    this._clientProxy = proxy;
+        //    return this;
+        //}
 
         protected override object Invoke(MethodInfo targetMethod, object[] args)
         {
@@ -76,7 +74,7 @@ namespace RemotableClient
             }
         }
 
-        public static T Create(T decorated, IClientProxy clientProxy)
+        public static T Create(T decorated, IRemotingClient clientProxy)
         {
             object proxy = Create<T, RemoteDecorator<T>>();
             ((RemoteDecorator<T>)proxy).SetParameters(decorated);

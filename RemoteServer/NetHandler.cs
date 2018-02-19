@@ -27,10 +27,19 @@ namespace RemotableServer
         public NetPackage ProcessRequest(Stream stream, Action<object> handleResult)
         {
             Func<IMessage, NetPackage> Prepared = (message) => { return this.Pack(message); };
+
+            // throws setrver-side exceptions
+            IMessage income = null;
+
             try
             {
-                IMessage income = ProtobufMessageParser.GetMessage(stream);
+                income = ProtobufMessageParser.GetMessage(stream);
+            }
+            catch (Exception ex) {
+                handleResult(ex); }
 
+            try
+            {
                 if (income == null)
                     return null;
                 else if (income is ConnectRequestMsg)
@@ -69,7 +78,7 @@ namespace RemotableServer
                     }
                     #endregion
 
-                    object result = _broker.InvokeMethod(message.InterfaceGuid, message.Method, deserializedParameters);
+                    object result = _broker.InvokeMethod(message.InterfaceGuid, message.Method, deserializedParameters) ?? "";
 
                     using (var ms = new MemoryStream())
                     {
@@ -109,7 +118,6 @@ namespace RemotableServer
             }
             catch (Exception ex)
             {
-
                 return Prepared(new RemotingExceptionMsg
                 {
                     Message = ex.Message,

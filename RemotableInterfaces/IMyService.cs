@@ -4,10 +4,12 @@ namespace RemotableInterfaces
 {
     public interface IMyService
     {
-        event EventHandler<SomeClassB> OnSomeBDetect;
+        event EventHandler<Part> OnSomeBDetect;
 
-        SomeClassA Do(int valueInt, string valueString, SomeClassA someA);
+        Unit Do(int valueInt, string valueString, Unit someA);
 
-        int Do(string valueString, int valueInt, SomeClassA someA);
+        int Do(string valueString, int valueInt, Unit someA);
+
+        void CheckUnitNotNull(Unit someUnit);
     }
 }

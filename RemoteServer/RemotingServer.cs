@@ -1,6 +1,7 @@
 ﻿using RemotableInterfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace RemotableServer
@@ -12,8 +13,7 @@ namespace RemotableServer
         public RemotingServer(INetChannel channel)
         {
             _channel = channel;
-
-            
+            _channel.OnChannelReport += (sender, message) => { Debug.WriteLine("Server: " + message); };
         }
 
         public void Start()
