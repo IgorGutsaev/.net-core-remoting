@@ -33,6 +33,12 @@ namespace RemotableTests
         {
             Debug.WriteLine(e.GetType().ToString() + " detected!");
         }
+
+        [Fact]
+        public void Test_Server_Creted()
+        {
+
+        }
     }
 }
  

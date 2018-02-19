@@ -23,7 +23,7 @@ namespace RemotableServer
 
         public void Stop()
         {
-            _channel.Start(); 
+            _channel.Stop(); 
         }
     }
 }
