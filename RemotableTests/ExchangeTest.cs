@@ -24,8 +24,7 @@ namespace RemotableTests
             IMyService service = provider.GetRequiredService<IMyService>();
             service.OnSomeBDetect += Service_OnSomeBDetect;
 
-            var result = service.Do(1, "lol", new SomeClassA { Date = DateTime.Now, 
-                = "Uid-1", Value = 3,  Child = new SomeClassB { Value = 23, Uid = "Uid-2" } });
+            var result = service.Do(1, "lol", new SomeClassA { Date = DateTime.Now, Uid = "Uid-1", Value = 3,  Child = new SomeClassB { Value = 23, Uid = "Uid-2" } });
 
             Console.ReadLine();
         }

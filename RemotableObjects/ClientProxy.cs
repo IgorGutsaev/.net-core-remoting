@@ -47,7 +47,7 @@ namespace RemotableObjects
             string serviceUid = _channel.Invoke(message).ToString();
 
             if (String.IsNullOrWhiteSpace(serviceUid))
-                throw new CommunicationException("Server cannot create a proxy!");
+                throw new CommunicationException($"An error occurred while service {interfaceType.Name} initiating!");
 
             this._ServiceProxyToken = serviceUid;
         }
