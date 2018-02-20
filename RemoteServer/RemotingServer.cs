@@ -13,6 +13,13 @@ namespace RemotableServer
             _channel = channel;
             _settings = settings;
             _channel.OnChannelReport += (sender, message) => { Debug.WriteLine("Server: " + message); };
+            this._channel.SetHandlerIdentifier("ServerHandler");
+
+        }
+
+        public bool IsEnable()
+        {
+            return this._channel != null && this._channel.IsEnable();
         }
 
         public void Start()

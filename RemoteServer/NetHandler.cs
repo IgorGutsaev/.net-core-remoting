@@ -16,6 +16,10 @@ namespace RemotableServer
     {
         private IBroker _broker;
 
+        public string Id = Guid.NewGuid().ToString();
+
+        public string Identifier { get; private set; } = "";
+
         public event onEventRaised OnEventRaised;
 
         public NetHandler(IBroker broker)
@@ -34,7 +38,7 @@ namespace RemotableServer
             { 
                 income = ProtobufMessageParser.GetMessage(stream); // throws server-side exceptions
                 if (income != null)
-                    Debug.WriteLine($"NetHandler: '{income.GetType().Name}' received");
+                    Debug.WriteLine($"{this.Identifier} {this.Id}: '{income.GetType().Name}' received");
             }
             catch (Exception ex) {
                 handleResult(ex); }
@@ -112,7 +116,14 @@ namespace RemotableServer
                 {
                     ReleaseInterfaceMsg releaseInterfaceMessage = (ReleaseInterfaceMsg)income;
 
-                    handleResult(releaseInterfaceMessage.InterfaceUid);
+                    _broker.ReleaseService(releaseInterfaceMessage.InterfaceUid);
+                    return Prepared(new ReleaseInterfaceResponseMsg { Type = RemotingCommands.ReleaseInterfaceResponse });
+                }
+                else if (income is ReleaseInterfaceResponseMsg)
+                {
+                    ReleaseInterfaceResponseMsg releaseInterfaceResponseMessage = (ReleaseInterfaceResponseMsg)income;
+
+                    handleResult("");
                 }
 
                 return null;
@@ -146,6 +157,13 @@ namespace RemotableServer
             byte[] totalLengthBuff = BitConverter.GetBytes(typeBuff.Length + bodyBuff.Length);
 
             return NetPackage.Create(totalLengthBuff.Combine(typeBuff).Combine(bodyBuff));
+        }
+
+        public void SetHandlerIdentifier(string identifier)
+        {
+            if (this.Identifier.Length > 0)
+                return;
+            this.Identifier = identifier;
         }
     }
 }

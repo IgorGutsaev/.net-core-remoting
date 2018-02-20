@@ -60,6 +60,12 @@ namespace RemotableObjects
                     case RemotingCommands.TriggerEvent:
                         incomeMessage = TriggerEventMsg.Parser.ParseFrom(incomeMs);
                         break;
+                    case RemotingCommands.ReleaseInterface:
+                        incomeMessage = ReleaseInterfaceMsg.Parser.ParseFrom(incomeMs);
+                        break;
+                    case RemotingCommands.ReleaseInterfaceResponse:
+                        incomeMessage = ReleaseInterfaceResponseMsg.Parser.ParseFrom(incomeMs);
+                        break;
                     default:
                         Debug.WriteLine("Fatal error.");
                         throw new CommunicationException("Unknown messageType");

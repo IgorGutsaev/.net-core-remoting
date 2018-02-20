@@ -4,7 +4,6 @@ using RemotableInterfaces;
 using RemoteCommunication.RemotableProtocol;
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -65,45 +64,100 @@ namespace RemotableObjects
             }
         }
 
+        private void OnAccept(IAsyncResult iar)
+        {
+            TcpListener l = (TcpListener)iar.AsyncState;
+
+            if (l == null)
+                return;
+
+            TcpClient c;
+            try
+            {
+                c = l.EndAcceptTcpClient(iar);
+
+                using (_NetworkStream = c.GetStream())
+                {
+                    NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
+                    if (response != null)
+                        _NetworkStream.Write(response.Data, 0, response.Data.Length);
+                }
+
+
+
+                // keep listening
+                l.BeginAcceptTcpClient(new AsyncCallback(OnAccept), l);
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine("Error accepting TCP connection: {0}", ex.Message);
+
+                // unrecoverable
+                ////  _doneEvent.Set();
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                // The listener was Stop()'d, disposing the underlying socket and
+                // triggering the completion of the callback. We're already exiting,
+                // so just return.
+                Console.WriteLine("Listen canceled.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                return;
+            }
+   
+
+
+            // meanwhile...
+            //SslStream s = new SslStream(c.GetStream());
+            //Console.WriteLine("Authenticating...");
+            //s.BeginAuthenticateAsServer(_cert, new AsyncCallback(OnAuthenticate), s);
+        }
+
+
         public void Start(INetServerSettings serverSettings)
         {
             this._serverSettings = serverSettings;
             IPEndPoint endpoint = this._serverSettings.GetServerAddress();
             
             _Listener = new TcpListener(endpoint.Address, endpoint.Port);
-            this.ct.Register(_Listener.Stop);
             _Listener.Start();
 
             Thread.Sleep(100);
 
             this.Report($"Listening {_Listener.LocalEndpoint}");
 
-            Task receive = Task.Run(() =>
-            {
-                try
-                {
-                    while (!ct.IsCancellationRequested)
-                    {
-                        using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
-                        {
-                            using (_NetworkStream = tcpClient.GetStream())
-                            {
-                                NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
-                                if (response != null)
-                                    _NetworkStream.Write(response.Data, 0, response.Data.Length);
-                            }
-                        }
-                    }
-                }
-                catch (SocketException e) when (e.SocketErrorCode == SocketError.Interrupted)
-                {
-                   // throw new OperationCanceledExeption();
-                }
-                catch (Exception ex)
-                {
-                    this.Report(ex.Message);
-                }
-            }, ct);
+            _Listener.BeginAcceptTcpClient(new AsyncCallback(OnAccept), _Listener);
+
+            //Task receive = Task.Run(() =>
+            //{
+            //    try
+            //    {
+            //        while (!ct.IsCancellationRequested)
+            //        {
+            //            using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
+            //            {
+            //                using (_NetworkStream = tcpClient.GetStream())
+            //                {
+            //                    NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
+            //                    if (response != null)
+            //                        _NetworkStream.Write(response.Data, 0, response.Data.Length);
+            //                }
+            //            }
+            //        }
+            //    }
+            //    catch (SocketException e) when (e.SocketErrorCode == SocketError.Interrupted)
+            //    {
+            //       // throw new OperationCanceledExeption();
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        this.Report(ex.Message);
+            //    }
+            //}, ct);
 
 
             Task send = Task.Run(() =>
@@ -136,20 +190,6 @@ namespace RemotableObjects
             IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
 
             return tcpEndPoints.Any(p => p.Port == port);
-        }
-
-        public bool Connect()
-        {
-            this.Report($"Try connect to server");
-
-            string response = this.Invoke(new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest }).ToString();
-
-            this.Report($"Server answer: '{response}'");
-
-            if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
-                throw new CommunicationException(response);
-
-            return true;
         }
 
         /// <summary>
@@ -193,7 +233,12 @@ namespace RemotableObjects
             this.tokenSource.Cancel();
 
             if (_Listener != null)
+            {
                 _Listener.Stop();
+                _Listener.Server.Close();
+                while (_Listener.Server.Connected)
+                    Thread.Sleep(50);
+            }
         }
 
         /// <summary>
@@ -207,7 +252,27 @@ namespace RemotableObjects
 
         private void Report(string message)
         { 
-            this.OnChannelReport?.Invoke(this, $"{message} [{this.Id}]");
+            this.OnChannelReport?.Invoke(this, $"{message} [Channel {this.Id}]");
+        }
+
+        public void SetHandlerIdentifier(string identifier)
+        {
+            this._handler.SetHandlerIdentifier(identifier);
+        }
+
+        public bool IsEnable()
+        {
+            try
+            {
+                int read = this._Listener.Server.Available;
+
+                return true;
+            }
+            catch (ObjectDisposedException ex)
+            {
+                // SocketClosed;
+                return false;
+            }
         }
     }
 }

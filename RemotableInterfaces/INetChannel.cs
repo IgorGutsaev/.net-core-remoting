@@ -13,9 +13,11 @@ namespace RemotableInterfaces
 
         void Start(INetServerSettings serverSettings);
         void Stop();
-        bool Connect();
         object Invoke(object outgoingMessage, IPEndPoint endpoint = null);
         void Send(NetPackage package, Action<object> handleResult, IPEndPoint destination = null);        
         IPEndPoint GetCallbackAddress();
+
+        void SetHandlerIdentifier(string identifier);
+        bool IsEnable();
     }
 }

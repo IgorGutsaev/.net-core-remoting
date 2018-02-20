@@ -8,6 +8,7 @@ using System.IO;
 using ProtoBuf;
 using System.Collections.Generic;
 using RemotableClient;
+using System.Linq;
 
 namespace RemotableObjects
 {
@@ -19,7 +20,6 @@ namespace RemotableObjects
         public event EventHandler<ServiceEvent> OnEvent;
 
         private INetChannel _channel;
-        private INetHandler _handler;
         private RemotingClientSetup _setup;
 
         //internal Dictionary<Type, string> _serviceCollection = new Dictionary<Type, string>(); // Singleton mode
@@ -28,16 +28,15 @@ namespace RemotableObjects
         internal Dictionary<string, Type> _serviceCollection = new Dictionary<string, Type>();
         public IDictionary<string, Type> ServiceCollection => _serviceCollection;
 
-        public RemotingClient(INetServerSettings settings, INetChannel channel, INetHandler handler, RemotingClientSetup setup)
+        public RemotingClient(INetServerSettings settings, INetChannel channel, RemotingClientSetup setup)
         {
             _channel = channel;
-            _handler = handler;
             this._setup = setup;
 
             _channel.OnChannelReport += (sender, message) => { Debug.WriteLine($"Client: " + message); };
             _channel.Start(settings);
-            _channel.Connect();
             _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };
+            this._channel.SetHandlerIdentifier("ClientHandler");
         }
 
         public string BuildRemoteService(Type interfaceType)
@@ -98,18 +97,43 @@ namespace RemotableObjects
                     Parameters = { repeatableParamsContainer }
                 };
 
-            return this._channel.Invoke(message);
+            Type serviceType = this.ServiceCollection[serviceUid];
+            IPEndPoint endpoint = this._setup.GetBinding(serviceType).ToIPEndPoint();
+
+            return this._channel.Invoke(message, endpoint);
         }
 
         public void Dispose()
         {
             foreach (var service in ServiceCollection)
             {
+                Type serviceType = service.Value;
+                IPEndPoint endpoint = this._setup.GetBinding(serviceType).ToIPEndPoint();
+
                 _channel.Invoke(new ReleaseInterfaceMsg
                 {
                     Type = RemotingCommands.ReleaseInterface,
                     InterfaceUid = service.Key
-                });
+                }, endpoint);
+            }
+
+            _channel.Stop();
+        }
+
+        public void CheckBindings()
+        {
+            List<IPEndPoint> endpoints = _setup.Bindings.Values.Distinct().Select(x => x.ToIPEndPoint()).ToList();
+
+            foreach (var endpoint in endpoints)
+            {
+                Debug.WriteLine($"Try connect to {endpoint}");
+
+                string response = this._channel.Invoke(new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest }, endpoint).ToString();
+
+                Debug.WriteLine($"{endpoint} answer: '{response}'");
+
+                if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
+                    throw new CommunicationException(response);
             }
         }
     }

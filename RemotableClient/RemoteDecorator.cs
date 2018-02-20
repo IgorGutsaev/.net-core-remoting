@@ -32,7 +32,7 @@ namespace RemotableClient
             {
                 Type typeEventParam = eventInfo.EventHandlerType;
 
-                if (typeEventParam.GenericTypeArguments.FirstOrDefault() == e.Data.GetType())
+                if (e.Data != null && typeEventParam.GenericTypeArguments.FirstOrDefault() == e.Data.GetType())
                 {
                     var eventDelegate = (MulticastDelegate)this._decorated.GetType().GetField(eventInfo.Name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(this._decorated);
                     if (eventDelegate != null)

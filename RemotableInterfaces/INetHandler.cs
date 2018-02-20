@@ -15,5 +15,7 @@ namespace RemotableInterfaces
         NetPackage ProcessRequest(Stream stream, Action<object> handleResult);
 
         NetPackage Pack(object data);
+
+        void SetHandlerIdentifier(string identifier);
     }
 }

@@ -8,9 +8,9 @@ namespace RemotableServer
     {
         public static IServiceCollection AddRemoting(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.AddTransient<INetChannel, TcpNetChannel>()
-                .AddSingleton<INetHandler, NetHandler>()
-                .AddScoped<IBroker, Broker>();
+            return serviceCollection.AddTransient<IBroker, Broker>()
+                .AddTransient<INetHandler, NetHandler>()
+                .AddTransient<INetChannel, TcpNetChannel>();
         }
 
         public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)

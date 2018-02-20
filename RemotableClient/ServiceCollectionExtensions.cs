@@ -12,10 +12,9 @@ namespace RemotableClient
             return serviceCollection.AddSingleton<RemotingClientSetup>()
                 .AddSingleton<IRemotingClient>(sp => { return new RemotingClient(new NetServerSettings("127.0.0.1", 65433),
                     sp.GetRequiredService<INetChannel>(),
-                    sp.GetRequiredService<INetHandler>(),
                     sp.GetRequiredService<RemotingClientSetup>()
                     ); }) // AddTransient
-                .AddTransient<IMyService>(sp => { return RemoteDecorator<IMyService>.Create(new MyService(), sp.GetRequiredService<IRemotingClient>()); });
+                .AddScoped<IMyService>(sp => { return RemoteDecorator<IMyService>.Create(new MyService(), sp.GetRequiredService<IRemotingClient>()); });
         }
     }
 }

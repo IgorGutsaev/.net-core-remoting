@@ -36,9 +36,14 @@ namespace RemotableObjects
 
             ServerProxy proxy = new ServerProxy(instance, endpoint);
             this.Add(proxy);
-            proxy.OnEventRaised += (serviceUid, someEvent, callbackEndpoint) => { this.OnEventRaised?.Invoke(new ServiceEvent { ServiceUid = serviceUid, Data = someEvent }, callbackEndpoint); };
+            proxy.OnEventRaised += Proxy_OnEventRaised;
 
             return proxy.Uid;
+        }
+
+        private void Proxy_OnEventRaised(string serviceUid, object someEvent, IPEndPoint callbackEndpoint)
+        {
+           this.OnEventRaised?.Invoke(new ServiceEvent { ServiceUid = serviceUid, Data = someEvent }, callbackEndpoint); 
         }
 
         public object InvokeMethod(string serviceUid, string methodName, List<MethodParameter> parameters)

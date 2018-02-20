@@ -12,7 +12,8 @@ namespace RemotableServer
         public RemotingServerSetup PublishService<T>()
             where T : class
         {
-            _publishedServices.Add(typeof(T));
+            if (!_publishedServices.Contains(typeof(T)))
+                _publishedServices.Add(typeof(T));
 
             return this;
         }

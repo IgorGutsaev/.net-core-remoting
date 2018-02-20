@@ -10,15 +10,30 @@ namespace RemotableTests
         {
             yield return new object[]
             {
-                new Unit { Value = 1, Date = DateTime.Now },
-                new Unit { Child = new Part { Uid = "2", Value= 4 }  },
+                1,
+                "value",
                 new Unit { Uid = "1" }
             };
 
             yield return new object[]
             {
-                new Unit { Date = DateTime.Now },
-                new Unit { Child = new Part()  },
+                0,
+                "",
+                new Unit { Value = 1, Date = DateTime.Now }
+
+            };
+
+            yield return new object[]
+            {
+                int.MaxValue,
+                "",
+                new Unit { Child = new Part { Uid = "2", Value= 5 } }
+            };
+
+            yield return new object[]
+            {
+                0,
+                "someData ",
                 new Unit { Date = DateTime.Now }
             };
         }

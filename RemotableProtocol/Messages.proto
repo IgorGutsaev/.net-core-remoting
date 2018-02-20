@@ -14,10 +14,11 @@ option csharp_namespace = "RemoteCommunication.RemotableProtocol";
         QueryInterface = 5;
 		QueryInterfaceResponse = 6;
         ReleaseInterface = 7;
-        InvokeMethod = 8;
-		InvokeMethodResponse = 9;
-        TriggerEvent = 10;
-		Exception = 11;
+		ReleaseInterfaceResponse = 8;
+        InvokeMethod = 9;
+		InvokeMethodResponse = 10;
+        TriggerEvent = 11;
+		Exception = 12;
     }
 
 	/*
@@ -81,4 +82,8 @@ message TriggerEventMsg {
 message ReleaseInterfaceMsg {
  RemotingCommands type = 1;
  string InterfaceUid = 2;
+}
+
+message ReleaseInterfaceResponseMsg {
+ RemotingCommands type = 1;
 }

@@ -6,6 +6,7 @@ using RemotableServer;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Xunit;
 
 namespace RemotableTests
@@ -19,24 +20,50 @@ namespace RemotableTests
         }
 
         [Fact]
-        public void Server_Constructor_Creted()
+        public void Server_Creating()
         {
             // Prepare
             RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
 
             // Pre-validate
-
+            Assert.False(server.IsEnable());
 
             // Perform
             server.Start();
 
             // Post-validate
+            Assert.True(server.IsEnable());
 
+            server.Stop();
+        }
+
+        [Fact]
+        public void Server_Client_Start_Stop()
+        {
+            int i = 0;
+            while (i < 3)
+            {
+                // Prepare
+                RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
+                server.Start();
+                IRemotingClient client = this._Provider.GetRequiredService<IRemotingClient>();
+
+                // Pre-validate
+                client.CheckBindings();
+                
+
+                // Perform
+                client.Dispose();
+                server.Stop();
+
+                // Post-validate
+                Assert.False(server.IsEnable());
+             }
         }
 
         [Theory]
         [MemberData(nameof(TestDataGenerator.GetUnitFromDataGenerator), MemberType = typeof(TestDataGenerator))]
-        public void Test_Intercept_Event(Unit a1, Unit a2, Unit a3)
+        public void Server_Method_Invocation(int valueInt, string valueString, Unit unit)
         {
             EventHandler<Part> onDetect = (sender, e) => {
                 Debug.WriteLine($"{e.GetType().ToString()} detected: {e}");
@@ -46,13 +73,15 @@ namespace RemotableTests
             RemotingServer server = this._Provider.GetRequiredService<RemotingServer>();
             server.Start();
 
+            IRemotingClient client = this._Provider.GetRequiredService<IRemotingClient>();
+            client.CheckBindings();
+
             IMyService service = this._Provider.GetRequiredService<IMyService>();
             service.OnSomeBDetect += onDetect;
 
-            Assert.NotNull(service.Do(1, "hi there", a1));
-            Assert.NotNull(service.Do(2, "hi there", a2));
-            Assert.NotNull(service.Do(3, "hi there", a3));
+            Assert.NotNull(service.Do(valueInt, valueString, unit));
 
+            client.Dispose();
             server.Stop();
         }
 
@@ -77,10 +106,18 @@ namespace RemotableTests
         [Fact]
         public void Test_Server_Setup()
         {
+            // Prepare
             RemotingServerSetup setup = new RemotingServerSetup();
             setup.PublishService<IMyService>();
 
+            // Pre-validate
             Assert.Contains(setup.PublishedServices, x => x == typeof(IMyService));
+
+            // Perform
+            setup.PublishService<IMyService>();
+
+            // Post-validate
+            Assert.Single(setup.PublishedServices);
         }
     }
 }
