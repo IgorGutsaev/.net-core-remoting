@@ -15,7 +15,7 @@ namespace RemotableServer
     public class NetHandler : INetHandler
     {
         private IBroker _broker;
-
+        
         public string Id = Guid.NewGuid().ToString();
 
         public string Identifier { get; private set; } = "";

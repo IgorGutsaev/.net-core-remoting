@@ -16,6 +16,7 @@ namespace RemotableTests
                 .AddRemoting()
                 .AddRemotingServer()
                 .AddRemotingClient()
+                .AddRemotingServices()
                 .BuildServiceProvider();
         }
     }
