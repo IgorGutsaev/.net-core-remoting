@@ -1,4 +1,5 @@
 ﻿using RemotableInterfaces;
+using System;
 using System.Diagnostics;
 
 namespace RemotableServer
@@ -12,9 +13,12 @@ namespace RemotableServer
         {
             _channel = channel;
             _settings = settings;
-            _channel.OnChannelReport += (sender, message) => { Debug.WriteLine("Server: " + message); };
-            this._channel.SetHandlerIdentifier("ServerHandler");
+            _channel.OnChannelReport += (sender, message) => { Console.WriteLine(message);  Debug.WriteLine("Server: " + message); };
+        }
 
+        public void Dispose()
+        {
+              _channel.Stop();
         }
 
         public bool IsEnable()
@@ -22,14 +26,6 @@ namespace RemotableServer
             return this._channel != null && this._channel.IsEnable();
         }
 
-        public void Start()
-        {
-            _channel.Start(_settings);
-        }
-
-        public void Stop()
-        {
-            _channel.Stop(); 
-        }
+        public void Start() => _channel.Start(_settings);
     }
 }

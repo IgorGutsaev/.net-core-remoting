@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace RemotableClient
+namespace RemotableObjects
 {
     public class RemoteDecorator<T> : DispatchProxy
     {
@@ -20,7 +20,7 @@ namespace RemotableClient
             _clientProxy = clientProxy;
             
             // build remote interface
-            _serviceUid = _clientProxy.BuildRemoteService(_decorated.GetType().GetInterfaces().FirstOrDefault());// build target interface
+            _serviceUid = _clientProxy.InvokeService(_decorated.GetType().GetInterfaces().FirstOrDefault());// build target interface
             _clientProxy.OnEvent += _proxy_OnEvent;
         }
 

@@ -15,10 +15,8 @@ namespace RemotableServer
     public class NetHandler : INetHandler
     {
         private IBroker _broker;
-        
-        public string Id = Guid.NewGuid().ToString();
 
-        public string Identifier { get; private set; } = "";
+        public string Identifier { get; private set; } = "handler-" + Guid.NewGuid().ToString().Substring(0, 6);
 
         public event onEventRaised OnEventRaised;
 
@@ -38,7 +36,7 @@ namespace RemotableServer
             { 
                 income = ProtobufMessageParser.GetMessage(stream); // throws server-side exceptions
                 if (income != null)
-                    Debug.WriteLine($"{this.Identifier} {this.Id}: '{income.GetType().Name}' received");
+                    Debug.WriteLine($"{this.Identifier}: '{income.GetType().Name}' received");
             }
             catch (Exception ex) {
                 handleResult(ex); }
@@ -157,13 +155,6 @@ namespace RemotableServer
             byte[] totalLengthBuff = BitConverter.GetBytes(typeBuff.Length + bodyBuff.Length);
 
             return NetPackage.Create(totalLengthBuff.Combine(typeBuff).Combine(bodyBuff));
-        }
-
-        public void SetHandlerIdentifier(string identifier)
-        {
-            if (this.Identifier.Length > 0)
-                return;
-            this.Identifier = identifier;
         }
     }
 }

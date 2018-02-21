@@ -11,7 +11,7 @@ namespace RemotableObjects
     {
         public event onEventRaised OnEventRaised;
 
-        private ServiceProvider Provider;
+        private ServiceProvider _Provider;
 
         private IServerProxy this[string serviceUid]
         {
@@ -23,18 +23,22 @@ namespace RemotableObjects
 
         public Broker()
         {
-            this.Provider = new ServiceCollection()
-             .AddScoped<IMyService, MyService>()
-             .BuildServiceProvider();
+            // Create container with local services
+            this._Provider = new ServiceCollection()
+                .AddServices()
+                .BuildServiceProvider();
         }
 
-        public string CreateService(string serviceName, IPEndPoint endpoint)
+        public string CreateService(string serviceName, IPEndPoint callbackEndpoint)
         {
             Type interfaceType = Type.GetType(serviceName);
 
-            var instance = this.Provider.GetRequiredService(interfaceType);
+            if (interfaceType == null)
+                throw new NotSupportedException($"Cannot resolve service '{serviceName}'");
 
-            ServerProxy proxy = new ServerProxy(instance, endpoint);
+            var instance = this._Provider.GetRequiredService(interfaceType);
+
+            ServerProxy proxy = new ServerProxy(instance, callbackEndpoint);
             this.Add(proxy);
             proxy.OnEventRaised += Proxy_OnEventRaised;
 

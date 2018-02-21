@@ -1,12 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using RemotableClient;
 using RemotableInterfaces;
-using RemotableObjects;
 using RemotableServer;
 using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
 using Xunit;
 
 namespace RemotableTests
@@ -34,11 +30,11 @@ namespace RemotableTests
             // Post-validate
             Assert.True(server.IsEnable());
 
-            server.Stop();
+            server.Dispose();
         }
 
         [Fact]
-        public void Server_Client_Start_Stop()
+        public void Server_Client_Start_Stop_NoException()
         {
             int i = 0;
             while (i < 3)
@@ -49,15 +45,15 @@ namespace RemotableTests
                 IRemotingClient client = this._Provider.GetRequiredService<IRemotingClient>();
 
                 // Pre-validate
-                client.CheckBindings();
-                
+                Assert.True(server.IsEnable());
 
                 // Perform
                 client.Dispose();
-                server.Stop();
+                server.Dispose();
 
                 // Post-validate
                 Assert.False(server.IsEnable());
+                i++;
              }
         }
 
@@ -74,15 +70,15 @@ namespace RemotableTests
             server.Start();
 
             IRemotingClient client = this._Provider.GetRequiredService<IRemotingClient>();
-            client.CheckBindings();
 
             IMyService service = this._Provider.GetRequiredService<IMyService>();
             service.OnSomeBDetect += onDetect;
 
             Assert.NotNull(service.Do(valueInt, valueString, unit));
 
+
             client.Dispose();
-            server.Stop();
+            server.Dispose();
         }
 
         [Fact]
@@ -101,6 +97,7 @@ namespace RemotableTests
 
             // Post-validate
             Assert.Equal("Value cannot be null.\r\nParameter name: Argument must declared!", ex.Message);
+            server.Dispose();
         }
 
         [Fact]

@@ -6,8 +6,7 @@ namespace RemotableInterfaces
     {
         event EventHandler<ServiceEvent> OnEvent;
 
-        void CheckBindings();
         object InvokeMethod(string serviceUid, string methodName, MethodParameter[] parameters);
-        string BuildRemoteService(Type interfaceType);
+        string InvokeService(Type interfaceType);
     }
 }

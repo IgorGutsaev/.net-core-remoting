@@ -21,6 +21,13 @@ namespace RemotableObjects
     {
         public event EventHandler<string> OnChannelReport;
         public event EventHandler<ServiceEvent> OnEvent;
+        public int ReadTimeout =
+            #if RELEASE
+                1
+            #elif DEBUG
+                100
+            #endif
+            ;
 
         public class SendUnit
         {
@@ -39,18 +46,22 @@ namespace RemotableObjects
         private INetHandler _handler;
         private TcpListener _Listener;
         private NetworkStream _NetworkStream = null;
-        public string Id { get; private set; } = Guid.NewGuid().ToString();
+        public string Id { get; private set; } = "channel-" + Guid.NewGuid().ToString().Substring(0, 6);
         #endregion
 
         public TcpNetChannel(INetHandler handler)
         {
-            this._handler = handler;
-            this._handler.OnEventRaised += _handler_OnMessageRaised;
-            this.ct = tokenSource.Token;
+            _handler = handler;
+            _handler.OnEventRaised += _handler_OnMessageRaised;
+
+            ct = tokenSource.Token;
         }
 
         private void _handler_OnMessageRaised(ServiceEvent ev, IPEndPoint endpoint)
         {
+            if (ev.Data == null) // ignore nullable events
+                return;
+
             string type = ev.Data.GetType().IsGenericType ? ev.Data.GetType().FullName : ev.Data.GetType().AssemblyQualifiedName;
 
             using (var ms = new MemoryStream())
@@ -64,17 +75,17 @@ namespace RemotableObjects
             }
         }
 
-        private void OnAccept(IAsyncResult iar)
+        private void OnAccept(IAsyncResult ar)
         {
-            TcpListener l = (TcpListener)iar.AsyncState;
-
+            TcpListener l = (TcpListener)ar.AsyncState;
+            
             if (l == null)
                 return;
 
             TcpClient c;
             try
             {
-                c = l.EndAcceptTcpClient(iar);
+                c = l.EndAcceptTcpClient(ar);
 
                 using (_NetworkStream = c.GetStream())
                 {
@@ -82,8 +93,6 @@ namespace RemotableObjects
                     if (response != null)
                         _NetworkStream.Write(response.Data, 0, response.Data.Length);
                 }
-
-
 
                 // keep listening
                 l.BeginAcceptTcpClient(new AsyncCallback(OnAccept), l);
@@ -93,30 +102,18 @@ namespace RemotableObjects
                 Console.WriteLine("Error accepting TCP connection: {0}", ex.Message);
 
                 // unrecoverable
-                ////  _doneEvent.Set();
                 return;
             }
             catch (ObjectDisposedException)
             {
-                // The listener was Stop()'d, disposing the underlying socket and
-                // triggering the completion of the callback. We're already exiting,
-                // so just return.
-                Console.WriteLine("Listen canceled.");
+                // Listen canceled
                 return;
             }
             catch (Exception ex)
             {
                 return;
             }
-   
-
-
-            // meanwhile...
-            //SslStream s = new SslStream(c.GetStream());
-            //Console.WriteLine("Authenticating...");
-            //s.BeginAuthenticateAsServer(_cert, new AsyncCallback(OnAuthenticate), s);
         }
-
 
         public void Start(INetServerSettings serverSettings)
         {
@@ -132,33 +129,33 @@ namespace RemotableObjects
 
             _Listener.BeginAcceptTcpClient(new AsyncCallback(OnAccept), _Listener);
 
-            //Task receive = Task.Run(() =>
-            //{
-            //    try
-            //    {
-            //        while (!ct.IsCancellationRequested)
-            //        {
-            //            using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
-            //            {
-            //                using (_NetworkStream = tcpClient.GetStream())
-            //                {
-            //                    NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
-            //                    if (response != null)
-            //                        _NetworkStream.Write(response.Data, 0, response.Data.Length);
-            //                }
-            //            }
-            //        }
-            //    }
-            //    catch (SocketException e) when (e.SocketErrorCode == SocketError.Interrupted)
-            //    {
-            //       // throw new OperationCanceledExeption();
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        this.Report(ex.Message);
-            //    }
-            //}, ct);
-
+            // Blocking read
+            /* Task receive = Task.Run(() =>
+            {
+                try
+                {
+                    while (!ct.IsCancellationRequested)
+                    {
+                        using (TcpClient tcpClient = _Listener.AcceptTcpClient()) // Waiting for a client
+                        {
+                            using (_NetworkStream = tcpClient.GetStream())
+                            {
+                                NetPackage response = this._handler.ProcessRequest(_NetworkStream, (ev) => { this.OnEvent(this, (ServiceEvent)ev); });
+                                if (response != null)
+                                    _NetworkStream.Write(response.Data, 0, response.Data.Length);
+                            }
+                        }
+                    }
+                }
+                catch (SocketException e) when (e.SocketErrorCode == SocketError.Interrupted)
+                {
+                    // throw new OperationCanceledExeption();
+                }
+                catch (Exception ex)
+                {
+                    this.Report(ex.Message);
+                }
+            }, ct); */
 
             Task send = Task.Run(() =>
             {
@@ -175,7 +172,7 @@ namespace RemotableObjects
                         using (NetworkStream stream = sClient.GetStream())
                         {
                             stream.Write(unit.Pakage.Data, 0, unit.Pakage.Data.Length);
-                            stream.ReadTimeout = 100 * 1000; // 100 sec
+                            stream.ReadTimeout = ReadTimeout * 1000; // 100 sec
 
                             _handler.ProcessRequest(stream, unit.Handler);//, unit.Handler);
                         }
@@ -252,12 +249,7 @@ namespace RemotableObjects
 
         private void Report(string message)
         { 
-            this.OnChannelReport?.Invoke(this, $"{message} [Channel {this.Id}]");
-        }
-
-        public void SetHandlerIdentifier(string identifier)
-        {
-            this._handler.SetHandlerIdentifier(identifier);
+            this.OnChannelReport?.Invoke(this, $"{this.Id}: {message}");
         }
 
         public bool IsEnable()

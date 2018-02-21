@@ -13,10 +13,10 @@ namespace RemotableServer
                 .AddTransient<INetChannel, TcpNetChannel>();
         }
 
-        public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection)
+        public static IServiceCollection AddRemotingServer(this IServiceCollection serviceCollection, string address, int port)
         {
             return serviceCollection.AddSingleton<RemotingServer>(sp => {
-                return new RemotingServer(new NetServerSettings(), sp.GetRequiredService<INetChannel>()); });
+                return new RemotingServer(new NetServerSettings(address, port), sp.GetRequiredService<INetChannel>()); });
         }
     }
 }

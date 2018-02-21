@@ -13,7 +13,8 @@ using System.Linq;
 namespace RemotableObjects
 {
     /// <summary>
-    /// 
+    /// Client communication tool
+    /// Check bindings, initializ/release services, invoke methods, handle events 
     /// </summary>
     public class RemotingClient : IRemotingClient
     {
@@ -22,11 +23,8 @@ namespace RemotableObjects
         private INetChannel _channel;
         private RemotingClientSetup _setup;
 
-        //internal Dictionary<Type, string> _serviceCollection = new Dictionary<Type, string>(); // Singleton mode
-        //public IDictionary<Type, string> ServiceCollection => _serviceCollection;
-
         internal Dictionary<string, Type> _serviceCollection = new Dictionary<string, Type>();
-        public IDictionary<string, Type> ServiceCollection => _serviceCollection;
+        public IDictionary<string, Type> ServiceCollection { get { return _serviceCollection; } }
 
         public RemotingClient(INetServerSettings settings, INetChannel channel, RemotingClientSetup setup)
         {
@@ -36,13 +34,12 @@ namespace RemotableObjects
             _channel.OnChannelReport += (sender, message) => { Debug.WriteLine($"Client: " + message); };
             _channel.Start(settings);
             _channel.OnEvent += (sender, ev) => { this.OnEvent?.Invoke(sender, ev); };
-            this._channel.SetHandlerIdentifier("ClientHandler");
         }
 
-        public string BuildRemoteService(Type interfaceType)
+        public string InvokeService(Type interfaceType)
         {
-            Debug.WriteLine($"Client: ask the server to build '{interfaceType.FullName}' proxied service");
-
+            this.CheckBinding(interfaceType);
+   
             IPEndPoint myEndpoint = _channel.GetCallbackAddress();
             QueryInterfaceMsg message =
                 new QueryInterfaceMsg
@@ -53,7 +50,7 @@ namespace RemotableObjects
                     CallbackPort = (uint)myEndpoint.Port
                 };
 
-            IPEndPoint endpoint = this._setup.GetBinding(interfaceType).ToIPEndPoint();
+            IPEndPoint endpoint = this._setup.GetBinding(interfaceType);
 
             string serviceUid = _channel.Invoke(message, endpoint).ToString();
 
@@ -67,8 +64,6 @@ namespace RemotableObjects
 
         public object InvokeMethod(string serviceUid, string methodName, MethodParameter[] parameters)
         {
-            Debug.WriteLine($"Client: invoke method '{methodName}' in proxied service");
-
             RepeatedField<MethodParameterMsg> repeatableParamsContainer =
                 new RepeatedField<MethodParameterMsg>();
 
@@ -98,17 +93,18 @@ namespace RemotableObjects
                 };
 
             Type serviceType = this.ServiceCollection[serviceUid];
-            IPEndPoint endpoint = this._setup.GetBinding(serviceType).ToIPEndPoint();
+            IPEndPoint endpoint = this._setup.GetBinding(serviceType);
 
             return this._channel.Invoke(message, endpoint);
         }
 
         public void Dispose()
         {
+            // Released created services on server side
             foreach (var service in ServiceCollection)
             {
                 Type serviceType = service.Value;
-                IPEndPoint endpoint = this._setup.GetBinding(serviceType).ToIPEndPoint();
+                IPEndPoint endpoint = this._setup.GetBinding(serviceType);
 
                 _channel.Invoke(new ReleaseInterfaceMsg
                 {
@@ -120,21 +116,18 @@ namespace RemotableObjects
             _channel.Stop();
         }
 
-        public void CheckBindings()
+        private void CheckBinding(Type interfaceType)
         {
-            List<IPEndPoint> endpoints = _setup.Bindings.Values.Distinct().Select(x => x.ToIPEndPoint()).ToList();
+            IPEndPoint endpoint = _setup.Bindings[interfaceType]?.ToIPEndPoint();
 
-            foreach (var endpoint in endpoints)
-            {
-                Debug.WriteLine($"Try connect to {endpoint}");
+            if (endpoint == null)
+                throw new NotSupportedException($"There is no binding for '{interfaceType}'");
 
-                string response = this._channel.Invoke(new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest }, endpoint).ToString();
+            string response = this._channel.Invoke(new ConnectRequestMsg { Type = RemotingCommands.ConnectionRequest }, endpoint).ToString();
 
-                Debug.WriteLine($"{endpoint} answer: '{response}'");
+            if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
+                throw new CommunicationException(response);
 
-                if (!String.Equals(response, "+ok", StringComparison.InvariantCultureIgnoreCase))
-                    throw new CommunicationException(response);
-            }
         }
     }
 }

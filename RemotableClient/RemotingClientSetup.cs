@@ -1,34 +1,27 @@
 ﻿using RemotableInterfaces;
+using RemotableObjects;
 using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Net;
 
 namespace RemotableClient
 {
     public sealed class RemotingClientSetup
     {
-        public RemotingClientSetup()
-        {
-            this.BindRemoteService<IMyService>("127.0.0.1:65432");
-        }
-        
-        public RemotingClientSetup BindRemoteService<T>(String endpointUri)
-        {
-            _bindings[typeof(T)] = endpointUri;
+        private IServiceBindings _bindings;
 
-            return this;
+        public IServiceBindings Bindings { get { return this._bindings; } }
+
+        public RemotingClientSetup(IServiceBindings bindings)
+        {
+            this._bindings = bindings;
         }
 
-        internal IDictionary<Type, String> Bindings => _bindings;
-
-        private Dictionary<Type, String> _bindings = new Dictionary<Type, String>();
-
-        public string GetBinding(Type serviceType)
+        public IPEndPoint GetBinding(Type serviceType)
         {
             if (!this._bindings.ContainsKey(serviceType))
                 throw new Exception($"No specified binding for service '{serviceType}'");
 
-            return this._bindings[serviceType];
+            return this._bindings[serviceType].ToIPEndPoint();
         }
     }
 }

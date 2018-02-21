@@ -1,9 +1,10 @@
-﻿namespace RemotableInterfaces
+﻿using System;
+
+namespace RemotableInterfaces
 {
-    public interface IRemotingServer
+    public interface IRemotingServer: IDisposable
     {
         void Start();
-        void Stop();
         bool IsEnable();
     }
 }
